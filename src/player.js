@@ -118,7 +118,7 @@ class Player {
     this['r_' + el.type](el, card);
     this.body.replaceChildren(card); this.body.scrollTop = 0;
   }
-  btn(label, fn, cls) { return h('button', { type: 'button', class: 'btn ' + (cls || 'primary'), onclick: fn }, label); }
+  btn(label, fn, cls) { return h('button', { type: 'button', class: 'btn ' + (cls === undefined ? 'primary' : cls), onclick: fn }, label); }
   fb(kind, text, pts) {
     return h('div', { class: 'pl-fb ' + kind, role: 'status' }, h('div', { html: md(text) }), pts > 0 && h('span', { class: 'chip pts' }, '+' + pts + ' Punkte'));
   }
@@ -313,7 +313,7 @@ class Player {
         setTimeout(loop, 250);
       };
       loop();
-    } catch (e) { box.replaceChildren(h('p', { class: 'muted' }, 'Das Live-Kamerabild ist hier nicht verfügbar (in eingebetteten Ansichten gesperrt). Nutze „QR-Code fotografieren“ oder tippe den Code ein.')); }
+    } catch (e) { box.replaceChildren(h('p', { class: 'muted' }, 'Das Live-Kamerabild ist hier nicht verfügbar. Es geht nur auf Seiten mit HTTPS und nicht in eingebetteten Ansichten oder lokalen Dateien. Nutze „QR-Code fotografieren“ oder tippe den Code ein.')); }
   }
 
   r_location(el, card) {

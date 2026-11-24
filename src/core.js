@@ -275,4 +275,21 @@ class Game {
   }
 }
 
-if (typeof module !== 'undefined') module.exports = { uid, clone, esc, md, shuffle, haversine, bearing, offsetPoint, fmtDist, fmtTime, hashStr, coerce, cmp, evalConds, applyActions, normText, checkQuiz, solutionText, TYPE_DEFS, makeElement, blankBound, normalizeBound, findProblems, varNames, Game, OPS, BUILTIN_VARS, POINT_TYPES, AUTO_TYPES };
+/* ---------- Spiel-Link: Bound komprimiert in die Adresse packen ---------- */
+function toB64url(u8) { let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function fromB64url(t) { t = t.replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '='; const s = atob(t), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+async function packBound(bound) {
+  const bytes = new TextEncoder().encode(JSON.stringify(bound));
+  if (typeof CompressionStream === 'undefined') return 'p.' + toB64url(bytes);
+  const z = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+  return 'z.' + toB64url(z);
+}
+async function unpackBound(tok) {
+  const kind = tok.slice(0, 2), data = fromB64url(tok.slice(2));
+  let bytes = data;
+  if (kind === 'z.') bytes = new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+  else if (kind !== 'p.') throw new Error('Der Link ist unvollständig oder beschädigt.');
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+if (typeof module !== 'undefined') module.exports = { packBound, unpackBound, uid, clone, esc, md, shuffle, haversine, bearing, offsetPoint, fmtDist, fmtTime, hashStr, coerce, cmp, evalConds, applyActions, normText, checkQuiz, solutionText, TYPE_DEFS, makeElement, blankBound, normalizeBound, findProblems, varNames, Game, OPS, BUILTIN_VARS, POINT_TYPES, AUTO_TYPES };

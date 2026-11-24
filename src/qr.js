@@ -1,10 +1,10 @@
 /* ============================================================
-   QR-Code-Generator (Byte-Modus, Fehlerkorrektur M, Version 1–10)
+   QR-Code-Generator (Byte-Modus, Fehlerkorrektur M, Version 1–40)
    Eigene schlanke Implementierung nach ISO/IEC 18004.
    ============================================================ */
 const QR = (() => {
-  const ECC_PER_BLOCK = [0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26];
-  const NUM_BLOCKS = [0, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5];
+  const ECC_PER_BLOCK = [0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26, 30, 22, 22, 24, 24, 28, 28, 26, 26, 26, 26, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28];
+  const NUM_BLOCKS = [0, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5, 5, 8, 9, 9, 10, 10, 11, 13, 14, 16, 17, 17, 18, 20, 21, 23, 25, 26, 28, 29, 31, 33, 35, 37, 38, 40, 43, 45, 47, 49];
   const rawModules = v => {
     let r = (16 * v + 128) * v + 64;
     if (v >= 2) { const n = Math.floor(v / 7) + 2; r -= (25 * n - 10) * n - 55; if (v >= 7) r -= 36; }
@@ -27,8 +27,8 @@ const QR = (() => {
   function encode(text) {
     const bytes = Array.from(new TextEncoder().encode(String(text)));
     let ver = 1;
-    for (; ver <= 10; ver++) { if (4 + (ver < 10 ? 8 : 16) + bytes.length * 8 <= dataCodewords(ver) * 8) break; }
-    if (ver > 10) throw new Error('Text für den QR-Code zu lang (max. ca. 210 Zeichen).');
+    for (; ver <= 40; ver++) { if (4 + (ver < 10 ? 8 : 16) + bytes.length * 8 <= dataCodewords(ver) * 8) break; }
+    if (ver > 40) throw new Error('Text für den QR-Code zu lang (max. ca. 2300 Zeichen).');
     // Bitstrom
     const bits = [];
     const put = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };

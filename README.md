@@ -12,9 +12,23 @@ Ein Bound ist eine einzelne JSON-Datei. Editor, Vorschau und Player stecken in e
 - **Logik:** eigene Variablen, Bedingungen, Aktionen, Weichen
 - **Auswertung:** Ergebnisliste, Urkunde, Bestenliste auf dem Gerät, Ergebnis als JSON
 - **Karte:** eigene schlanke Karte mit OpenStreetMap-Kacheln, Ziel per Klick setzen
-- **QR-Codes:** integrierter Generator für Code-Stationen, druckbar oder als SVG
+- **QR-Codes:** integrierter Generator (bis Version 40) für Code-Stationen und Spiel-Links, druckbar oder als SVG
 - **Speichern:** Bound als JSON, Autosave im Browser, Rückgängig/Wiederholen
 - **Export:** „Player-Datei“ erzeugt eine einzelne HTML-Datei, die nur den Bound spielt (mit `#edit` hinten an der Adresse öffnet sie wieder im Editor)
+
+## Spiel-Link (ohne Upload)
+
+Im Editor erzeugt **Spiel-Link** eine Adresse, in der der ganze Bound steckt (`…/#spiel=…`). Wer sie öffnet, sieht nur das Spiel. Das Hosting der Seite genügt einmal, pro Rallye ist kein Upload nötig. Sehr große Bounds und eingebettete Bilder machen den Link lang, dann besser Bild-Links verwenden. Aus kurzen Links erzeugt der Dialog direkt einen QR-Code (der Generator kann bis ca. 2300 Zeichen, gut lesbar sind etwa 600).
+
+## Spielen per Datei im Repo
+
+Lege deinen gespeicherten Bound (`.json`) ins Repo, zum Beispiel nach `bounds/mein-bound.json`. Spieler öffnen dann nur das Spiel, ohne Editor:
+
+```
+https://<dein-name>.github.io/<repo>/?play=bounds/mein-bound.json
+```
+
+Das Beispiel: `?play=examples/raetselrallye-stadtpark.json`. Es werden nur Dateien von derselben Webseite geladen. Auf diesem Weg laufen Kamera, GPS und Kompass, weil GitHub Pages HTTPS nutzt.
 
 ## Benutzen
 

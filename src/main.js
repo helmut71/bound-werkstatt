@@ -30,7 +30,31 @@ function sampleBound() {
   return b;
 }
 
+/* Spiel-Link: index.html?play=examples/mein-bound.json lädt einen Bound aus demselben Ordner und zeigt nur den Player. */
+async function playFromUrl(rel) {
+  const root = $('#player-root'); $('#app').hidden = true; root.hidden = false; document.body.classList.add('player-only');
+  root.replaceChildren(h('p', { class: 'pl-card', style: { padding: '24px' } }, 'Lade …'));
+  try {
+    const u = new URL(rel, location.href);
+    if (u.origin !== location.origin) throw new Error('Nur Dateien von derselben Webseite sind erlaubt.');
+    const r = await fetch(u.href); if (!r.ok) throw new Error('Datei nicht gefunden (' + r.status + ').');
+    new Player(root, normalizeBound(await r.json()).bound, { preview: false });
+  } catch (e) {
+    root.replaceChildren(h('div', { class: 'pl-card', style: { padding: '24px' } }, h('h2', {}, 'Der Bound konnte nicht geladen werden'), h('p', { class: 'muted' }, String(e.message || e)), h('p', {}, h('a', { href: location.pathname }, 'Zum Editor'))));
+  }
+}
+
+async function playFromHash(tok) {
+  const root = $('#player-root'); $('#app').hidden = true; root.hidden = false; document.body.classList.add('player-only');
+  try { new Player(root, normalizeBound(await unpackBound(tok)).bound, { preview: false }); }
+  catch (e) { root.replaceChildren(h('div', { class: 'pl-card', style: { padding: '24px' } }, h('h2', {}, 'Der Link ist unvollständig'), h('p', { class: 'muted' }, 'Kopiere ihn noch einmal vollständig. Manche Chat-Apps schneiden sehr lange Links ab.'))); }
+}
+
 (function main() {
+  const hm = location.hash.match(/^#spiel=(.+)$/);
+  if (hm) { playFromHash(hm[1]); return; }
+  const playParam = new URLSearchParams(location.search).get('play');
+  if (playParam) { playFromUrl(playParam); return; }
   const emb = document.getElementById('embedded-' + 'bound');
   let embedded = null;
   try { const t = emb && emb.textContent.trim(); if (t && t !== 'null') embedded = JSON.parse(t); } catch (e) { }

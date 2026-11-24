@@ -199,6 +199,7 @@ textarea{resize:vertical;min-height:60px}
 .modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .qr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
 .qr{margin:0;padding:10px;border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;background:#fff;color:#111}
+.qr-one{display:flex;flex-direction:column;align-items:flex-start;gap:8px;margin:6px 0}.qr-one svg{width:240px;height:240px;background:#fff;border:1px solid var(--line)}
 .qr-svg{width:100%;max-width:150px}.qr-svg svg{width:100%;height:auto;display:block}
 .qr figcaption{display:flex;flex-direction:column;gap:3px;align-items:center;font-size:13px}.qr code{font:600 14px var(--font-m)}
 #toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,20px);max-width:90vw;padding:10px 16px;border-radius:10px;background:var(--ink);color:var(--bg);opacity:0;pointer-events:none;transition:.2s;z-index:80;font-size:14px}
@@ -235,7 +236,8 @@ textarea{resize:vertical;min-height:60px}
       <button class="btn sm" id="b-new" type="button">Neu</button>
       <button class="btn sm" id="b-sample" type="button">Beispiel</button>
       <button class="btn sm" id="b-open" type="button">Öffnen</button>
-      <button class="btn sm primary" id="b-save" type="button" title="Als JSON-Datei speichern (Strg+S)">Speichern</button>
+      <button class="btn sm primary" id="b-link" type="button" title="Link erzeugen, mit dem andere den Bound direkt spielen">Spiel-Link</button>
+      <button class="btn sm" id="b-save" type="button" title="Als JSON-Datei speichern (Strg+S)">Speichern</button>
       <button class="btn sm" id="b-copy" type="button">JSON kopieren</button>
       <button class="btn sm" id="b-qr" type="button">QR-Codes</button>
       <button class="btn sm" id="b-export" type="button" title="Eine einzelne HTML-Datei, die nur den Player enthält">Player-Datei</button>
@@ -545,15 +547,32 @@ class Game {
   }
 }
 
-if (typeof module !== 'undefined') module.exports = { uid, clone, esc, md, shuffle, haversine, bearing, offsetPoint, fmtDist, fmtTime, hashStr, coerce, cmp, evalConds, applyActions, normText, checkQuiz, solutionText, TYPE_DEFS, makeElement, blankBound, normalizeBound, findProblems, varNames, Game, OPS, BUILTIN_VARS, POINT_TYPES, AUTO_TYPES };
+/* ---------- Spiel-Link: Bound komprimiert in die Adresse packen ---------- */
+function toB64url(u8) { let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function fromB64url(t) { t = t.replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '='; const s = atob(t), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+async function packBound(bound) {
+  const bytes = new TextEncoder().encode(JSON.stringify(bound));
+  if (typeof CompressionStream === 'undefined') return 'p.' + toB64url(bytes);
+  const z = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+  return 'z.' + toB64url(z);
+}
+async function unpackBound(tok) {
+  const kind = tok.slice(0, 2), data = fromB64url(tok.slice(2));
+  let bytes = data;
+  if (kind === 'z.') bytes = new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+  else if (kind !== 'p.') throw new Error('Der Link ist unvollständig oder beschädigt.');
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+if (typeof module !== 'undefined') module.exports = { packBound, unpackBound, uid, clone, esc, md, shuffle, haversine, bearing, offsetPoint, fmtDist, fmtTime, hashStr, coerce, cmp, evalConds, applyActions, normText, checkQuiz, solutionText, TYPE_DEFS, makeElement, blankBound, normalizeBound, findProblems, varNames, Game, OPS, BUILTIN_VARS, POINT_TYPES, AUTO_TYPES };
 
 /* ============================================================
-   QR-Code-Generator (Byte-Modus, Fehlerkorrektur M, Version 1–10)
+   QR-Code-Generator (Byte-Modus, Fehlerkorrektur M, Version 1–40)
    Eigene schlanke Implementierung nach ISO/IEC 18004.
    ============================================================ */
 const QR = (() => {
-  const ECC_PER_BLOCK = [0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26];
-  const NUM_BLOCKS = [0, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5];
+  const ECC_PER_BLOCK = [0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26, 30, 22, 22, 24, 24, 28, 28, 26, 26, 26, 26, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28];
+  const NUM_BLOCKS = [0, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5, 5, 8, 9, 9, 10, 10, 11, 13, 14, 16, 17, 17, 18, 20, 21, 23, 25, 26, 28, 29, 31, 33, 35, 37, 38, 40, 43, 45, 47, 49];
   const rawModules = v => {
     let r = (16 * v + 128) * v + 64;
     if (v >= 2) { const n = Math.floor(v / 7) + 2; r -= (25 * n - 10) * n - 55; if (v >= 7) r -= 36; }
@@ -576,8 +595,8 @@ const QR = (() => {
   function encode(text) {
     const bytes = Array.from(new TextEncoder().encode(String(text)));
     let ver = 1;
-    for (; ver <= 10; ver++) { if (4 + (ver < 10 ? 8 : 16) + bytes.length * 8 <= dataCodewords(ver) * 8) break; }
-    if (ver > 10) throw new Error('Text für den QR-Code zu lang (max. ca. 210 Zeichen).');
+    for (; ver <= 40; ver++) { if (4 + (ver < 10 ? 8 : 16) + bytes.length * 8 <= dataCodewords(ver) * 8) break; }
+    if (ver > 40) throw new Error('Text für den QR-Code zu lang (max. ca. 2300 Zeichen).');
     // Bitstrom
     const bits = [];
     const put = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
@@ -989,7 +1008,7 @@ class Player {
     this['r_' + el.type](el, card);
     this.body.replaceChildren(card); this.body.scrollTop = 0;
   }
-  btn(label, fn, cls) { return h('button', { type: 'button', class: 'btn ' + (cls || 'primary'), onclick: fn }, label); }
+  btn(label, fn, cls) { return h('button', { type: 'button', class: 'btn ' + (cls === undefined ? 'primary' : cls), onclick: fn }, label); }
   fb(kind, text, pts) {
     return h('div', { class: 'pl-fb ' + kind, role: 'status' }, h('div', { html: md(text) }), pts > 0 && h('span', { class: 'chip pts' }, '+' + pts + ' Punkte'));
   }
@@ -1184,7 +1203,7 @@ class Player {
         setTimeout(loop, 250);
       };
       loop();
-    } catch (e) { box.replaceChildren(h('p', { class: 'muted' }, 'Das Live-Kamerabild ist hier nicht verfügbar (in eingebetteten Ansichten gesperrt). Nutze „QR-Code fotografieren“ oder tippe den Code ein.')); }
+    } catch (e) { box.replaceChildren(h('p', { class: 'muted' }, 'Das Live-Kamerabild ist hier nicht verfügbar. Es geht nur auf Seiten mit HTTPS und nicht in eingebetteten Ansichten oder lokalen Dateien. Nutze „QR-Code fotografieren“ oder tippe den Code ein.')); }
   }
 
   r_location(el, card) {
@@ -1566,6 +1585,36 @@ function showQR() {
   const cards = items.map(it => { let svg; try { svg = QR.svg(it.code, { margin: 2 }); } catch (e) { svg = '<p>Code zu lang</p>'; } return h('figure', { class: 'qr' }, h('div', { class: 'qr-svg', html: svg }), h('figcaption', {}, h('b', {}, it.title), h('code', {}, it.code), h('button', { class: 'btn sm no-print', type: 'button', onclick: () => saveFile('qr-' + slug(it.code) + '.svg', QR.svg(it.code, { margin: 4 }), 'image/svg+xml') }, 'SVG speichern'))); });
   modal('QR-Codes für „Code finden“', h('div', { class: 'qr-grid print-area' }, cards), [{ label: 'Drucken', cls: 'primary', keep: true, fn: () => { document.body.classList.add('print-qr'); try { window.print(); } catch (e) { toast('Drucken ist hier nicht möglich. Speichere die SVG-Dateien.'); } setTimeout(() => document.body.classList.remove('print-qr'), 800); } }, { label: 'Schließen' }]);
 }
+async function showLink() {
+  const stored = store.get('bw:base'), here = /^https?:/.test(location.protocol) ? location.origin + location.pathname : '';
+  const base = h('input', { type: 'text', id: 'lk-base', value: stored || here, placeholder: 'https://dein-name.github.io/bound-werkstatt/', autocomplete: 'off' });
+  const out = h('textarea', { id: 'lk-out', rows: 6, readOnly: true, 'aria-label': 'Spiel-Link', onclick: e => e.target.select() });
+  const info = h('p', { class: 'hint' });
+  const qin = h('input', { type: 'text', id: 'lk-qr', autocomplete: 'off', placeholder: 'Kurze Adresse für den QR-Code' }), qbox = h('div', { class: 'qr-one' }), qinfo = h('small', { class: 'hint' });
+  const drawQR = () => {
+    const t = qin.value.trim(); qbox.replaceChildren(); qinfo.textContent = '';
+    if (!t) { qinfo.textContent = 'Der Link ist zu lang für einen gut lesbaren QR-Code. Trage hier eine kurze Adresse ein, zum Beispiel die einer hochgeladenen Rallye-Datei.'; return; }
+    try { qbox.innerHTML = QR.svg(t, { margin: 2 }); qbox.append(h('button', { class: 'btn sm', type: 'button', onclick: () => saveFile('spiel-qr.svg', QR.svg(t, { margin: 4 }), 'image/svg+xml') }, 'SVG speichern')); qinfo.textContent = t.length > 600 ? 'Sehr dichter Code. Zeige ihn groß am Bildschirm oder drucke ihn groß aus.' : 'Mit der Handy-Kamera scannen.'; }
+    catch (x) { qinfo.textContent = x.message; }
+  };
+  qin.addEventListener('input', () => { qin.dataset.manual = '1'; drawQR(); });
+  const upd = async () => {
+    const b = base.value.trim().split('#')[0].split('?')[0]; store.set('bw:base', base.value.trim());
+    out.value = b + '#spiel=' + await packBound(App.bound);
+    const n = out.value.length, img = JSON.stringify(App.bound).includes('data:image');
+    info.textContent = n.toLocaleString('de-AT') + ' Zeichen' + (n > 6000 ? '. Das ist lang und wird in manchen Chat-Apps abgeschnitten.' : '.') + (img ? ' Eingebettete Bilder machen den Link sehr lang. Nutze besser Bild-Links (https://…).' : '');
+    if (!qin.dataset.manual) qin.value = n <= 1200 ? out.value : '';
+    drawQR();
+  };
+  base.addEventListener('input', upd);
+  modal('Spiel-Link', h('div', {},
+    h('p', {}, 'Wer diesen Link öffnet, sieht nur das Spiel ohne Editor. Der ganze Bound steckt im Link, du musst nichts hochladen.'),
+    h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'lk-base' }, 'Adresse deiner veröffentlichten Seite'), base, h('small', { class: 'hint' }, 'Der Link funktioniert für andere nur, wenn hier die Adresse einer öffentlichen Seite steht (zum Beispiel GitHub Pages). Kamera, GPS und Kompass brauchen außerdem HTTPS.')),
+    h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'lk-out' }, 'Spiel-Link'), out, info),
+    h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'lk-qr' }, 'QR-Code für diese Adresse'), qin, qbox, qinfo)),
+    [{ label: 'Link kopieren', cls: 'primary', keep: true, fn: () => copyText(out.value) }, { label: 'Schließen' }]);
+  upd();
+}
 function askConfirm(msg, yes) { modal('Bitte bestätigen', h('p', {}, msg), [{ label: 'Abbrechen' }, { label: 'Ja, fortfahren', cls: 'danger', fn: yes }]); }
 
 /* ---------- Hinzufügen-Menü ---------- */
@@ -1593,7 +1642,7 @@ function initEditor(initial) {
   fileIn.onchange = async () => { const f = fileIn.files[0]; if (f) importText(await f.text(), f.name); fileIn.value = ''; };
   $('#b-save').onclick = () => saveFile(fileName() + '.json', prettyJSON(), 'application/json');
   $('#b-copy').onclick = () => copyText(prettyJSON());
-  $('#b-export').onclick = exportPlayer; $('#b-qr').onclick = showQR;
+  $('#b-export').onclick = exportPlayer; $('#b-link').onclick = showLink; $('#b-qr').onclick = showQR;
   $('#pv-restart').onclick = refreshPreview; $('#pv-toggle').onclick = () => { App.previewFrom = App.previewFrom === 'sel' ? 'start' : 'sel'; refreshPreview(); };
   ap.mtabs.querySelectorAll('button').forEach(b => b.onclick = () => { App.panel = b.dataset.p; applyPanel(); });
   document.addEventListener('keydown', e => {
@@ -1642,7 +1691,31 @@ function sampleBound() {
   return b;
 }
 
+/* Spiel-Link: index.html?play=examples/mein-bound.json lädt einen Bound aus demselben Ordner und zeigt nur den Player. */
+async function playFromUrl(rel) {
+  const root = $('#player-root'); $('#app').hidden = true; root.hidden = false; document.body.classList.add('player-only');
+  root.replaceChildren(h('p', { class: 'pl-card', style: { padding: '24px' } }, 'Lade …'));
+  try {
+    const u = new URL(rel, location.href);
+    if (u.origin !== location.origin) throw new Error('Nur Dateien von derselben Webseite sind erlaubt.');
+    const r = await fetch(u.href); if (!r.ok) throw new Error('Datei nicht gefunden (' + r.status + ').');
+    new Player(root, normalizeBound(await r.json()).bound, { preview: false });
+  } catch (e) {
+    root.replaceChildren(h('div', { class: 'pl-card', style: { padding: '24px' } }, h('h2', {}, 'Der Bound konnte nicht geladen werden'), h('p', { class: 'muted' }, String(e.message || e)), h('p', {}, h('a', { href: location.pathname }, 'Zum Editor'))));
+  }
+}
+
+async function playFromHash(tok) {
+  const root = $('#player-root'); $('#app').hidden = true; root.hidden = false; document.body.classList.add('player-only');
+  try { new Player(root, normalizeBound(await unpackBound(tok)).bound, { preview: false }); }
+  catch (e) { root.replaceChildren(h('div', { class: 'pl-card', style: { padding: '24px' } }, h('h2', {}, 'Der Link ist unvollständig'), h('p', { class: 'muted' }, 'Kopiere ihn noch einmal vollständig. Manche Chat-Apps schneiden sehr lange Links ab.'))); }
+}
+
 (function main() {
+  const hm = location.hash.match(/^#spiel=(.+)$/);
+  if (hm) { playFromHash(hm[1]); return; }
+  const playParam = new URLSearchParams(location.search).get('play');
+  if (playParam) { playFromUrl(playParam); return; }
   const emb = document.getElementById('embedded-' + 'bound');
   let embedded = null;
   try { const t = emb && emb.textContent.trim(); if (t && t !== 'null') embedded = JSON.parse(t); } catch (e) { }

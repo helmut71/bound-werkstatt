@@ -299,6 +299,36 @@ function showQR() {
   const cards = items.map(it => { let svg; try { svg = QR.svg(it.code, { margin: 2 }); } catch (e) { svg = '<p>Code zu lang</p>'; } return h('figure', { class: 'qr' }, h('div', { class: 'qr-svg', html: svg }), h('figcaption', {}, h('b', {}, it.title), h('code', {}, it.code), h('button', { class: 'btn sm no-print', type: 'button', onclick: () => saveFile('qr-' + slug(it.code) + '.svg', QR.svg(it.code, { margin: 4 }), 'image/svg+xml') }, 'SVG speichern'))); });
   modal('QR-Codes für „Code finden“', h('div', { class: 'qr-grid print-area' }, cards), [{ label: 'Drucken', cls: 'primary', keep: true, fn: () => { document.body.classList.add('print-qr'); try { window.print(); } catch (e) { toast('Drucken ist hier nicht möglich. Speichere die SVG-Dateien.'); } setTimeout(() => document.body.classList.remove('print-qr'), 800); } }, { label: 'Schließen' }]);
 }
+async function showLink() {
+  const stored = store.get('bw:base'), here = /^https?:/.test(location.protocol) ? location.origin + location.pathname : '';
+  const base = h('input', { type: 'text', id: 'lk-base', value: stored || here, placeholder: 'https://dein-name.github.io/bound-werkstatt/', autocomplete: 'off' });
+  const out = h('textarea', { id: 'lk-out', rows: 6, readOnly: true, 'aria-label': 'Spiel-Link', onclick: e => e.target.select() });
+  const info = h('p', { class: 'hint' });
+  const qin = h('input', { type: 'text', id: 'lk-qr', autocomplete: 'off', placeholder: 'Kurze Adresse für den QR-Code' }), qbox = h('div', { class: 'qr-one' }), qinfo = h('small', { class: 'hint' });
+  const drawQR = () => {
+    const t = qin.value.trim(); qbox.replaceChildren(); qinfo.textContent = '';
+    if (!t) { qinfo.textContent = 'Der Link ist zu lang für einen gut lesbaren QR-Code. Trage hier eine kurze Adresse ein, zum Beispiel die einer hochgeladenen Rallye-Datei.'; return; }
+    try { qbox.innerHTML = QR.svg(t, { margin: 2 }); qbox.append(h('button', { class: 'btn sm', type: 'button', onclick: () => saveFile('spiel-qr.svg', QR.svg(t, { margin: 4 }), 'image/svg+xml') }, 'SVG speichern')); qinfo.textContent = t.length > 600 ? 'Sehr dichter Code. Zeige ihn groß am Bildschirm oder drucke ihn groß aus.' : 'Mit der Handy-Kamera scannen.'; }
+    catch (x) { qinfo.textContent = x.message; }
+  };
+  qin.addEventListener('input', () => { qin.dataset.manual = '1'; drawQR(); });
+  const upd = async () => {
+    const b = base.value.trim().split('#')[0].split('?')[0]; store.set('bw:base', base.value.trim());
+    out.value = b + '#spiel=' + await packBound(App.bound);
+    const n = out.value.length, img = JSON.stringify(App.bound).includes('data:image');
+    info.textContent = n.toLocaleString('de-AT') + ' Zeichen' + (n > 6000 ? '. Das ist lang und wird in manchen Chat-Apps abgeschnitten.' : '.') + (img ? ' Eingebettete Bilder machen den Link sehr lang. Nutze besser Bild-Links (https://…).' : '');
+    if (!qin.dataset.manual) qin.value = n <= 1200 ? out.value : '';
+    drawQR();
+  };
+  base.addEventListener('input', upd);
+  modal('Spiel-Link', h('div', {},
+    h('p', {}, 'Wer diesen Link öffnet, sieht nur das Spiel ohne Editor. Der ganze Bound steckt im Link, du musst nichts hochladen.'),
+    h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'lk-base' }, 'Adresse deiner veröffentlichten Seite'), base, h('small', { class: 'hint' }, 'Der Link funktioniert für andere nur, wenn hier die Adresse einer öffentlichen Seite steht (zum Beispiel GitHub Pages). Kamera, GPS und Kompass brauchen außerdem HTTPS.')),
+    h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'lk-out' }, 'Spiel-Link'), out, info),
+    h('div', { class: 'field' }, h('label', { class: 'lbl', for: 'lk-qr' }, 'QR-Code für diese Adresse'), qin, qbox, qinfo)),
+    [{ label: 'Link kopieren', cls: 'primary', keep: true, fn: () => copyText(out.value) }, { label: 'Schließen' }]);
+  upd();
+}
 function askConfirm(msg, yes) { modal('Bitte bestätigen', h('p', {}, msg), [{ label: 'Abbrechen' }, { label: 'Ja, fortfahren', cls: 'danger', fn: yes }]); }
 
 /* ---------- Hinzufügen-Menü ---------- */
@@ -326,7 +356,7 @@ function initEditor(initial) {
   fileIn.onchange = async () => { const f = fileIn.files[0]; if (f) importText(await f.text(), f.name); fileIn.value = ''; };
   $('#b-save').onclick = () => saveFile(fileName() + '.json', prettyJSON(), 'application/json');
   $('#b-copy').onclick = () => copyText(prettyJSON());
-  $('#b-export').onclick = exportPlayer; $('#b-qr').onclick = showQR;
+  $('#b-export').onclick = exportPlayer; $('#b-link').onclick = showLink; $('#b-qr').onclick = showQR;
   $('#pv-restart').onclick = refreshPreview; $('#pv-toggle').onclick = () => { App.previewFrom = App.previewFrom === 'sel' ? 'start' : 'sel'; refreshPreview(); };
   ap.mtabs.querySelectorAll('button').forEach(b => b.onclick = () => { App.panel = b.dataset.p; applyPanel(); });
   document.addEventListener('keydown', e => {
