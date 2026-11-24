@@ -1,0 +1,477 @@
+{
+  "format": "bound-werkstatt",
+  "version": 1,
+  "meta": {
+    "title": "Rätselrallye Stadtpark",
+    "description": "Eine kurze Rallye mit **Quiz, QR-Code, GPS, Verzweigung und Bonuspunkten**. Bearbeite sie links, spiele sie rechts.\n\n- ca. 20 Minuten\n- Bring ein Smartphone mit",
+    "author": "Beispiel-Gruppe",
+    "cover": "",
+    "lang": "de",
+    "askName": true,
+    "askTeam": false,
+    "timeLimit": 0,
+    "showScore": true,
+    "showTimer": true,
+    "leaderboard": true,
+    "finalText": "Danke fürs Mitspielen, {name}! Du hast **{score}** Punkte gesammelt.",
+    "variables": [
+      {
+        "name": "weg",
+        "initial": 0
+      },
+      {
+        "name": "fotos",
+        "initial": 0
+      }
+    ]
+  },
+  "elements": [
+    {
+      "id": "start",
+      "type": "info",
+      "cond": [],
+      "actions": [],
+      "next": "",
+      "title": "Willkommen",
+      "text": "Schön, dass du dabei bist!\n\nDu sammelst unterwegs **Punkte**. Schnelle und richtige Antworten bringen die meisten.",
+      "image": "",
+      "audio": "",
+      "video": "",
+      "buttonLabel": "Los geht’s"
+    },
+    {
+      "id": "q-fluss",
+      "type": "quiz",
+      "cond": [],
+      "actions": [],
+      "next": "",
+      "title": "Welcher Fluss fließt unter dem Park?",
+      "sub": "single",
+      "text": "Der Wiener Stadtpark liegt an einem kleinen Fluss. Wie heißt er?",
+      "image": "",
+      "options": [
+        {
+          "text": "Donau",
+          "correct": false
+        },
+        {
+          "text": "Wienfluss",
+          "correct": true
+        },
+        {
+          "text": "Alte Donau",
+          "correct": false
+        }
+      ],
+      "answers": [],
+      "caseSensitive": false,
+      "value": 0,
+      "tolerance": 0,
+      "items": [
+        "Erstes",
+        "Zweites",
+        "Drittes"
+      ],
+      "pairs": [
+        {
+          "l": "Links 1",
+          "r": "Rechts 1"
+        },
+        {
+          "l": "Links 2",
+          "r": "Rechts 2"
+        }
+      ],
+      "points": 10,
+      "attempts": 2,
+      "penalty": 50,
+      "shuffle": true,
+      "timeLimit": 0,
+      "hint": "Der Name steckt im Namen der Stadt.",
+      "hintCost": 3,
+      "feedbackRight": "Richtig!",
+      "feedbackWrong": "Leider falsch.",
+      "explain": "Der Wienfluss ist rund 34 km lang.",
+      "nextRight": "",
+      "nextWrong": ""
+    },
+    {
+      "id": "q-text",
+      "type": "quiz",
+      "cond": [],
+      "actions": [],
+      "next": "",
+      "title": "Wer steht in Gold?",
+      "sub": "text",
+      "text": "Im Park steht ein vergoldetes Denkmal eines berühmten Walzerkönigs. Wie ist sein Nachname?",
+      "image": "",
+      "options": [
+        {
+          "text": "Antwort A",
+          "correct": true
+        },
+        {
+          "text": "Antwort B",
+          "correct": false
+        }
+      ],
+      "answers": [
+        "Strauss",
+        "Strauß"
+      ],
+      "caseSensitive": false,
+      "value": 0,
+      "tolerance": 0,
+      "items": [
+        "Erstes",
+        "Zweites",
+        "Drittes"
+      ],
+      "pairs": [
+        {
+          "l": "Links 1",
+          "r": "Rechts 1"
+        },
+        {
+          "l": "Links 2",
+          "r": "Rechts 2"
+        }
+      ],
+      "points": 15,
+      "attempts": 3,
+      "penalty": 30,
+      "shuffle": true,
+      "timeLimit": 0,
+      "hint": "",
+      "hintCost": 2,
+      "feedbackRight": "Richtig!",
+      "feedbackWrong": "Leider falsch.",
+      "explain": "",
+      "nextRight": "",
+      "nextWrong": ""
+    },
+    {
+      "id": "c-park",
+      "type": "code",
+      "cond": [],
+      "actions": [],
+      "next": "",
+      "title": "Station am Eingang",
+      "text": "Such den QR-Code am Eingang. Scanne ihn oder tippe den Code darunter ein.",
+      "codes": [
+        "PARK1"
+      ],
+      "scan": true,
+      "points": 10,
+      "hint": "Er hängt am Tor, auf Augenhöhe.",
+      "allowSkip": true
+    },
+    {
+      "id": "l-denkmal",
+      "type": "location",
+      "cond": [],
+      "actions": [],
+      "next": "",
+      "title": "Finde das Denkmal",
+      "text": "Geh dem Pfeil nach. Wenn du nah genug bist, geht es automatisch weiter.",
+      "lat": 48.2045,
+      "lon": 16.3805,
+      "radius": 40,
+      "points": 15,
+      "showDistance": true,
+      "showMap": true,
+      "allowSkip": true
+    },
+    {
+      "id": "w-choice",
+      "type": "choice",
+      "cond": [],
+      "actions": [],
+      "next": "",
+      "title": "Welchen Weg nimmst du?",
+      "text": "Zwei Aufgaben stehen zur Wahl.",
+      "image": "",
+      "options": [
+        {
+          "label": "Der ruhige Weg (Natur)",
+          "next": "w-a",
+          "actions": [
+            {
+              "var": "weg",
+              "op": "set",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "label": "Der sportliche Weg (Bewegung)",
+          "next": "w-b",
+          "actions": [
+            {
+              "var": "weg",
+              "op": "set",
+              "value": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "w-a",
+      "type": "mission",
+      "cond": [],
+      "actions": [
+        {
+          "var": "fotos",
+          "op": "add",
+          "value": 1
+        }
+      ],
+      "next": "q-sort",
+      "title": "Der schönste Baum",
+      "kind": "photo",
+      "text": "Fotografiere einen Baum, der dir gefällt.",
+      "points": 10,
+      "optional": false
+    },
+    {
+      "id": "w-b",
+      "type": "timer",
+      "cond": [],
+      "actions": [],
+      "next": "",
+      "title": "20 Sekunden Bewegung",
+      "text": "Mach 10 Kniebeugen. Der Timer läuft.",
+      "seconds": 20,
+      "skippable": false
+    },
+    {
+      "id": "q-sort",
+      "type": "quiz",
+      "cond": [],
+      "actions": [],
+      "next": "",
+      "title": "Wasserkreislauf",
+      "sub": "sort",
+      "text": "Bring die Schritte in die richtige Reihenfolge.",
+      "image": "",
+      "options": [
+        {
+          "text": "Antwort A",
+          "correct": true
+        },
+        {
+          "text": "Antwort B",
+          "correct": false
+        }
+      ],
+      "answers": [],
+      "caseSensitive": false,
+      "value": 0,
+      "tolerance": 0,
+      "items": [
+        "Verdunstung",
+        "Wolkenbildung",
+        "Regen",
+        "Versickerung"
+      ],
+      "pairs": [
+        {
+          "l": "Links 1",
+          "r": "Rechts 1"
+        },
+        {
+          "l": "Links 2",
+          "r": "Rechts 2"
+        }
+      ],
+      "points": 15,
+      "attempts": 2,
+      "penalty": 50,
+      "shuffle": true,
+      "timeLimit": 0,
+      "hint": "",
+      "hintCost": 2,
+      "feedbackRight": "Richtig!",
+      "feedbackWrong": "Leider falsch.",
+      "explain": "",
+      "nextRight": "",
+      "nextWrong": ""
+    },
+    {
+      "id": "q-match",
+      "type": "quiz",
+      "cond": [],
+      "actions": [],
+      "next": "",
+      "title": "Hauptstädte",
+      "sub": "match",
+      "text": "Ordne jede Stadt dem Land zu.",
+      "image": "",
+      "options": [
+        {
+          "text": "Antwort A",
+          "correct": true
+        },
+        {
+          "text": "Antwort B",
+          "correct": false
+        }
+      ],
+      "answers": [],
+      "caseSensitive": false,
+      "value": 0,
+      "tolerance": 0,
+      "items": [
+        "Erstes",
+        "Zweites",
+        "Drittes"
+      ],
+      "pairs": [
+        {
+          "l": "Wien",
+          "r": "Österreich"
+        },
+        {
+          "l": "Bern",
+          "r": "Schweiz"
+        },
+        {
+          "l": "Berlin",
+          "r": "Deutschland"
+        }
+      ],
+      "points": 15,
+      "attempts": 2,
+      "penalty": 50,
+      "shuffle": true,
+      "timeLimit": 0,
+      "hint": "",
+      "hintCost": 2,
+      "feedbackRight": "Richtig!",
+      "feedbackWrong": "Leider falsch.",
+      "explain": "",
+      "nextRight": "",
+      "nextWrong": ""
+    },
+    {
+      "id": "q-num",
+      "type": "quiz",
+      "cond": [],
+      "actions": [],
+      "next": "",
+      "title": "Wie viele Beine hat eine Spinne?",
+      "sub": "number",
+      "text": "",
+      "image": "",
+      "options": [
+        {
+          "text": "Antwort A",
+          "correct": true
+        },
+        {
+          "text": "Antwort B",
+          "correct": false
+        }
+      ],
+      "answers": [],
+      "caseSensitive": false,
+      "value": 8,
+      "tolerance": 0,
+      "items": [
+        "Erstes",
+        "Zweites",
+        "Drittes"
+      ],
+      "pairs": [
+        {
+          "l": "Links 1",
+          "r": "Rechts 1"
+        },
+        {
+          "l": "Links 2",
+          "r": "Rechts 2"
+        }
+      ],
+      "points": 5,
+      "attempts": 1,
+      "penalty": 50,
+      "shuffle": true,
+      "timeLimit": 0,
+      "hint": "",
+      "hintCost": 2,
+      "feedbackRight": "Richtig!",
+      "feedbackWrong": "Leider falsch.",
+      "explain": "",
+      "nextRight": "",
+      "nextWrong": ""
+    },
+    {
+      "id": "s-1",
+      "type": "survey",
+      "cond": [],
+      "actions": [],
+      "next": "",
+      "title": "Wie hat es dir gefallen?",
+      "sub": "rating",
+      "text": "Gib uns bis zu fünf Sterne.",
+      "options": [
+        "Ja",
+        "Nein"
+      ],
+      "required": false
+    },
+    {
+      "id": "j-bonus",
+      "type": "jump",
+      "cond": [],
+      "actions": [],
+      "next": "fin",
+      "title": "Bonus ab 40 Punkten?",
+      "rules": [
+        {
+          "var": "score",
+          "op": ">=",
+          "value": 40,
+          "target": "a-bonus"
+        }
+      ]
+    },
+    {
+      "id": "a-bonus",
+      "type": "action",
+      "cond": [],
+      "actions": [
+        {
+          "var": "score",
+          "op": "add",
+          "value": 10
+        }
+      ],
+      "next": "",
+      "title": "Bonus gutschreiben"
+    },
+    {
+      "id": "i-bonus",
+      "type": "info",
+      "cond": [],
+      "actions": [],
+      "next": "",
+      "title": "Bonus!",
+      "text": "Du hattest mindestens 40 Punkte und bekommst **10 Extra-Punkte**.",
+      "image": "",
+      "audio": "",
+      "video": "",
+      "buttonLabel": "Weiter"
+    },
+    {
+      "id": "fin",
+      "type": "end",
+      "cond": [],
+      "actions": [],
+      "next": "",
+      "title": "Ende",
+      "text": "Danke für deine Teilnahme. Bis zum nächsten Mal!"
+    }
+  ]
+}

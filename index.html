@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bound Werkstatt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: drei Spalten (Elemente | Bearbeiten | Vorschau), unter 1100px als Tabs. Akzent = Postenkreis der Orientierungslauf-Karte. */
+:root{
+  --bg:#f1f4f3; --panel:#ffffff; --panel2:#e8eeed; --ink:#14232b; --muted:#566872; --line:#d3dedf;
+  --accent:#b02468; --accent-ink:#ffffff; --accent-soft:#f6dfeb;
+  --ok:#1b7857; --ok-soft:#d8efe5; --warn:#9a6208; --warn-soft:#f7ebd2; --bad:#b83232; --bad-soft:#f7dcdc; --info-soft:#e0ecf3;
+  --font-d:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif; --font-b:'IBM Plex Sans','Segoe UI',system-ui,sans-serif; --font-m:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --r:10px; color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f171b; --panel:#172126; --panel2:#1f2c32; --ink:#e6eef1; --muted:#95a7b0; --line:#2b3a41;
+  --accent:#e2679f; --accent-ink:#1b0a13; --accent-soft:#3a1a2b;
+  --ok:#4cc39a; --ok-soft:#133428; --warn:#e0a94a; --warn-soft:#38290e; --bad:#ef7c7c; --bad-soft:#401b1b; --info-soft:#1b2d38; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0f171b; --panel:#172126; --panel2:#1f2c32; --ink:#e6eef1; --muted:#95a7b0; --line:#2b3a41;
+  --accent:#e2679f; --accent-ink:#1b0a13; --accent-soft:#3a1a2b;
+  --ok:#4cc39a; --ok-soft:#133428; --warn:#e0a94a; --warn-soft:#38290e; --bad:#ef7c7c; --bad-soft:#401b1b; --info-soft:#1b2d38; color-scheme:dark;}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--font-b);-webkit-text-size-adjust:100%}
+h1,h2,h3,h4{font-family:var(--font-d);margin:0;text-wrap:balance;line-height:1.2}
+button,input,select,textarea{font:inherit;color:inherit}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.muted{color:var(--muted)} .small{font-size:13px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:6px 14px;border:1px solid var(--line);border-radius:8px;background:var(--panel);cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover:not(:disabled){border-color:var(--muted)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover:not(:disabled){filter:brightness(1.07);border-color:var(--accent)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.sm{min-height:30px;padding:3px 10px;font-size:13px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row.tight{gap:4px}.row.end{justify-content:flex-end}
+.linklike{background:none;border:0;padding:0;color:var(--accent);text-align:left;cursor:pointer;text-decoration:underline}
+
+/* App-Gerüst */
+.app{display:grid;grid-template-columns:290px minmax(0,1fr) 400px;grid-template-rows:auto minmax(0,1fr);height:100%}
+.top{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:8px;font:700 18px var(--font-d)}
+.brand svg{width:26px;height:26px;color:var(--accent)}
+#bound-title{flex:1 1 220px;min-width:160px;max-width:420px;font:600 16px var(--font-d);padding:6px 10px;border:1px solid transparent;border-radius:8px;background:var(--panel2)}
+#bound-title:hover{border-color:var(--line)}
+.tools{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.mtabs{display:none}
+.side,.work,.prev{min-height:0;overflow:auto}
+.side{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column}
+.side-h{display:flex;align-items:baseline;justify-content:space-between;padding:12px 14px 6px;font:700 13px var(--font-d);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+#meta-item{margin:8px 10px 0;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);cursor:pointer;text-align:left;font-weight:600}
+#meta-item.sel{border-color:var(--accent);background:var(--accent-soft)}
+.ls{list-style:none;margin:0;padding:4px 10px;flex:1;overflow:auto}
+.li{display:flex;align-items:center;gap:10px;padding:8px 10px;margin:3px 0;border:1px solid transparent;border-radius:8px;cursor:pointer}
+.li:hover{background:var(--panel2)}
+.li.sel{border-color:var(--accent);background:var(--accent-soft)}
+.li.drag{opacity:.4}.li.over{border-top:2px solid var(--accent)}
+.li-ico{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:700 14px var(--font-d);background:var(--panel2);border:1.5px solid var(--muted);color:var(--ink)}
+.t-quiz,.t-mission,.t-code,.t-location,.t-survey{border-color:var(--accent);color:var(--accent)}
+.t-choice,.t-jump,.t-action,.t-timer,.t-end{border-style:dashed}
+.li-txt{display:flex;flex-direction:column;min-width:0;flex:1}
+.li-txt b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li-txt small{color:var(--muted);font-size:12px}
+.li-flag,.li-warn{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font:700 12px var(--font-d)}
+.li-flag{background:var(--info-soft);color:var(--ink)}
+.li-warn{background:var(--warn);color:#fff}
+.side-f{padding:10px;border-top:1px solid var(--line);position:relative;display:flex;flex-direction:column;gap:8px}
+#prob{border:1px solid var(--warn);background:var(--warn-soft);border-radius:8px;padding:6px 10px;font-size:13px}
+#prob summary{cursor:pointer;font-weight:600}
+#prob ul{margin:6px 0 0;padding-left:16px}
+.addmenu{position:absolute;left:10px;right:10px;bottom:56px;max-height:70vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px #0003;padding:8px;z-index:20}
+.cat-t{font:700 12px var(--font-d);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:6px 6px 2px}
+.addit{display:flex;gap:10px;align-items:center;width:100%;padding:6px;border:0;border-radius:8px;background:none;text-align:left;cursor:pointer}
+.addit:hover{background:var(--panel2)}
+.addit span:last-child{display:flex;flex-direction:column}.addit small{color:var(--muted);font-size:12px}
+
+/* Mitte */
+.work{padding:0 0 60px}
+#form{max-width:760px;padding:18px 20px;margin:0 auto}
+.fhead{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center;margin-bottom:14px}
+.kind{display:inline-block;padding:3px 10px;border:1.5px solid var(--accent);border-radius:99px;font:700 13px var(--font-d);color:var(--accent)}
+.field{display:flex;flex-direction:column;gap:5px;margin:0 0 14px}
+.lbl,.sublbl{font-size:13px;font-weight:600;color:var(--muted)}
+.sublbl{display:flex;flex-direction:column;gap:4px}
+.hint{color:var(--muted);font-size:12.5px}
+.note{margin:0 0 14px;padding:10px 12px;border-radius:8px;background:var(--info-soft);font-size:14px}
+input[type=text],input[type=number],input:not([type]),select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+textarea{resize:vertical;min-height:60px}
+.frow{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;align-items:end}
+.frow .field{margin:0 0 14px}
+.chk-row{display:flex;gap:8px;align-items:center;margin:0 0 12px;cursor:pointer}
+.chk-row input{width:18px;height:18px;accent-color:var(--accent)}
+.items{display:flex;flex-direction:column;gap:8px}
+.item{display:flex;gap:8px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.item-fields{flex:1;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 10px;align-items:end}
+.item-fields .field{margin:0}.item-fields .field.list,.item-fields .chk-row{margin:0}
+.item-fields .field.list{grid-column:1/-1}
+.item-tools{display:flex;flex-direction:column;gap:3px}
+.item-tools button{width:28px;height:26px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);cursor:pointer;line-height:1}
+.item-tools button:disabled{opacity:.35}.item-tools .del{color:var(--bad)}
+.empty{margin:0;color:var(--muted);font-size:13px}
+.logic{margin-top:18px;border:1px solid var(--line);border-radius:10px;padding:0 14px;background:var(--panel)}
+.logic summary{cursor:pointer;padding:12px 0;font:700 14px var(--font-d)}
+.logic[open] summary{border-bottom:1px solid var(--line);margin-bottom:14px}
+.media{display:flex;flex-direction:column;gap:8px}.media img{max-width:220px;max-height:140px;border-radius:8px;border:1px solid var(--line);object-fit:cover}
+.geo-map{height:240px;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:6px}
+
+/* Vorschau */
+.prev{background:var(--panel2);border-left:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:12px 14px 16px;gap:10px}
+.prev-h{display:flex;gap:8px;align-items:center;justify-content:space-between;width:100%;max-width:368px}
+.prev-h h2{font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.phone{width:100%;max-width:368px;flex:1;min-height:520px;max-height:760px;border:9px solid #0e171c;border-radius:34px;background:var(--bg);overflow:hidden;display:flex;box-shadow:0 14px 40px #0003}
+#phone-in{flex:1;min-width:0}
+
+/* Karte */
+.smap{position:relative;overflow:hidden;background:var(--panel2) repeating-linear-gradient(0deg,transparent 0 31px,var(--line) 31px 32px),repeating-linear-gradient(90deg,transparent 0 31px,var(--line) 31px 32px);touch-action:none;cursor:grab;user-select:none}
+.smap-tiles,.smap-over{position:absolute;inset:0}
+.smap-tile{position:absolute;left:0;top:0;width:256px;height:256px;max-width:none;pointer-events:none}
+.smap-over{pointer-events:none}
+.smap-zoom{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:4px}
+.smap-zoom button{width:30px;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--panel);cursor:pointer;font-size:18px;line-height:1}
+.smap-attr{position:absolute;right:0;bottom:0;padding:1px 6px;font-size:11px;background:#ffffffcc;color:#333}
+.smap-attr a{color:#0645ad}
+.smap-note{position:absolute;left:8px;top:8px;right:48px;padding:5px 8px;border-radius:6px;background:var(--panel);font-size:12px;color:var(--muted);border:1px solid var(--line)}
+
+/* Player */
+.pl{display:flex;flex-direction:column;height:100%;min-height:0;background:var(--bg);color:var(--ink)}
+.pl-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+.pl-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:700 14px var(--font-d)}
+.pl-pills{display:flex;gap:6px}
+.pl-score,.pl-clock{padding:2px 9px;border-radius:99px;background:var(--panel2);font-size:13px;font-variant-numeric:tabular-nums}
+.pl-score{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.pl-endbtn{border:0;background:none;color:var(--muted);cursor:pointer;font-size:13px;text-decoration:underline}
+.pl-prog{height:4px;background:var(--panel2)}.pl-prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.pl-body{flex:1;min-height:0;overflow:auto;padding:14px}
+.pl-card{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.pl-kind{font:700 12px var(--font-d);letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.pl-card h1{font-size:26px}.pl-card h2{font-size:22px}
+.pl-md p{margin:0 0 8px}.pl-md ul{margin:0 0 8px;padding-left:20px}.pl-md h4{margin:8px 0 4px}.pl-md img,.pl-img,.pl-cover{max-width:100%;border-radius:10px}.pl-md a{color:var(--accent)}
+.pl-video{width:100%;aspect-ratio:16/9;border:0;border-radius:10px;background:#000}.pl-audio{width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-block;padding:2px 10px;border-radius:99px;background:var(--panel2);font-size:13px}
+.chip.pts{background:var(--ok);color:#fff;font-weight:600}
+.fl{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;color:var(--muted)}
+.bad{border-color:var(--bad)!important}
+.big{font-size:18px;padding:12px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px;border:2px solid var(--line);border-radius:12px;background:var(--panel);text-align:left;cursor:pointer;min-height:48px}
+.opt:hover{border-color:var(--muted)}
+.opt .mk{flex:none;width:20px;height:20px;border:2px solid var(--muted);border-radius:50%}
+.opt.chk .mk{border-radius:5px}
+.opt.on{border-color:var(--accent);background:var(--accent-soft)}
+.opt.on .mk{background:var(--accent);box-shadow:inset 0 0 0 3px var(--accent-soft)}
+.opt.right{border-color:var(--ok);background:var(--ok-soft)}.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.opt.go{justify-content:center;font-weight:600}
+.opt.go .mk{display:none}
+.pl-fb{padding:12px 14px;border-radius:10px;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.pl-fb p{margin:0 0 6px}
+.pl-fb.ok{background:var(--ok-soft)}.pl-fb.bad{background:var(--bad-soft)}.pl-fb.info{background:var(--info-soft)}
+.sort{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.sort li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 8px 8px 14px;border:2px solid var(--line);border-radius:10px;background:var(--panel)}
+.sort li.right{border-color:var(--ok);background:var(--ok-soft)}.sort li.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.mv{display:flex;gap:4px}.mv button{width:34px;height:34px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);cursor:pointer}.mv button:disabled{opacity:.3}
+.match{display:flex;flex-direction:column;gap:10px}
+.match label{display:grid;grid-template-columns:1fr 1.3fr;gap:8px;align-items:center;padding:8px;border:2px solid transparent;border-radius:10px}
+.match label.right{border-color:var(--ok);background:var(--ok-soft)}.match label.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.qtimer{height:6px;border-radius:3px;background:var(--panel2);overflow:hidden}.qtimer i{display:block;height:100%;width:100%;background:var(--warn)}
+.stars{display:flex;gap:4px}.star{font-size:34px;line-height:1;border:0;background:none;color:var(--line);cursor:pointer}.star.on{color:#e8a317}
+.mprev img,.mprev video{max-width:100%;border-radius:10px}
+.scan video{width:100%;border-radius:10px;background:#000}
+.compass{width:150px;height:150px;margin:0 auto}
+.compass .ring{fill:var(--panel);stroke:var(--line);stroke-width:2}.compass .n{fill:var(--muted);font:700 11px var(--font-d)}
+.compass .arw{fill:var(--accent);transition:transform .3s}
+.loc-status{text-align:center;color:var(--muted);font-size:14px}
+.pl-map{height:200px;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+.bigtime{font:700 56px var(--font-d);text-align:center;font-variant-numeric:tabular-nums}
+.bigscore{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.bigscore b{font:700 56px/1 var(--font-d);color:var(--accent)}
+.res{width:100%;border-collapse:collapse;font-size:14px}.res td{padding:5px 6px;border-bottom:1px solid var(--line)}.res .num{text-align:right;font-variant-numeric:tabular-nums}
+.mk-ok{color:var(--ok);font-weight:700}.mk-bad{color:var(--bad);font-weight:700}.mk-n{color:var(--muted)}
+.pl-board ol{padding-left:20px;margin:8px 0}.pl-board li{display:flex;gap:10px}.pl-board li span{flex:1}
+.cert{border:3px double var(--accent);border-radius:12px;padding:6px;background:var(--panel)}
+.cert-in{text-align:center;padding:18px;display:flex;flex-direction:column;gap:6px;align-items:center}.cert-in h2{font-size:30px}.cert-score{font:700 22px var(--font-d);color:var(--accent);margin:0}
+.pl-dbg{border-top:1px solid var(--line);background:var(--panel);font-size:12px;padding:4px 10px}.pl-dbg summary{cursor:pointer;color:var(--muted)}.pl-dbg pre{margin:4px 0 0;white-space:pre-wrap;font:12px var(--font-m)}
+.player-only #player-root{height:100%;max-width:640px;margin:0 auto;box-shadow:0 0 0 1px var(--line)}
+
+/* Modal */
+.backdrop{position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{background:var(--panel);border-radius:14px;max-width:760px;width:100%;max-height:90vh;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:14px}
+.modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.qr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
+.qr{margin:0;padding:10px;border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;background:#fff;color:#111}
+.qr-svg{width:100%;max-width:150px}.qr-svg svg{width:100%;height:auto;display:block}
+.qr figcaption{display:flex;flex-direction:column;gap:3px;align-items:center;font-size:13px}.qr code{font:600 14px var(--font-m)}
+#toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,20px);max-width:90vw;padding:10px 16px;border-radius:10px;background:var(--ink);color:var(--bg);opacity:0;pointer-events:none;transition:.2s;z-index:80;font-size:14px}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media print{
+  body.print-cert *,body.print-qr *{visibility:hidden}
+  body.print-cert .cert,body.print-cert .cert *{visibility:visible}
+  body.print-cert .cert{position:fixed;inset:0;margin:auto;height:fit-content}
+  body.print-qr .print-area,body.print-qr .print-area *{visibility:visible}
+  body.print-qr .print-area{position:absolute;left:0;top:0;width:100%}
+  .no-print{display:none!important}
+}
+@media (max-width:1100px){
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr)}
+  .mtabs{display:flex;background:var(--panel);border-bottom:1px solid var(--line)}
+  .mtabs button{flex:1;padding:10px;border:0;border-bottom:3px solid transparent;background:none;font-weight:600;color:var(--muted);cursor:pointer}
+  .mtabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+  .app[data-panel="list"] .work,.app[data-panel="list"] .prev,.app[data-panel="edit"] .side,.app[data-panel="edit"] .prev,.app[data-panel="prev"] .side,.app[data-panel="prev"] .work{display:none}
+  .side{border-right:0}.prev{border-left:0}.phone{max-height:none}
+  .tools{margin-left:0;width:100%}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app" class="app" data-panel="edit">
+  <header class="top">
+    <div class="brand"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><circle cx="16" cy="16" r="12"/><path d="M16 4v6M16 22v6M4 16h6M22 16h6"/></svg>Bound Werkstatt</div>
+    <input id="bound-title" type="text" aria-label="Titel des Bounds" placeholder="Titel des Bounds">
+    <div class="tools">
+      <button class="btn sm" id="b-undo" type="button" title="Rückgängig (Strg+Z)" aria-label="Rückgängig">↶</button>
+      <button class="btn sm" id="b-redo" type="button" title="Wiederholen (Strg+Y)" aria-label="Wiederholen">↷</button>
+      <button class="btn sm" id="b-new" type="button">Neu</button>
+      <button class="btn sm" id="b-sample" type="button">Beispiel</button>
+      <button class="btn sm" id="b-open" type="button">Öffnen</button>
+      <button class="btn sm primary" id="b-save" type="button" title="Als JSON-Datei speichern (Strg+S)">Speichern</button>
+      <button class="btn sm" id="b-copy" type="button">JSON kopieren</button>
+      <button class="btn sm" id="b-qr" type="button">QR-Codes</button>
+      <button class="btn sm" id="b-export" type="button" title="Eine einzelne HTML-Datei, die nur den Player enthält">Player-Datei</button>
+    </div>
+  </header>
+  <nav id="mtabs" class="mtabs" aria-label="Bereiche"><button type="button" data-p="list">Elemente</button><button type="button" data-p="edit" aria-selected="true">Bearbeiten</button><button type="button" data-p="prev">Vorschau</button></nav>
+  <aside class="side" aria-label="Elemente">
+    <button id="meta-item" type="button">Bound-Einstellungen</button>
+    <div class="side-h"><span>Elemente</span><span id="el-count">0</span></div>
+    <ol id="el-list" class="ls"></ol>
+    <div class="side-f" id="add-wrap">
+      <details id="prob" hidden><summary><span id="prob-n">0</span> Hinweis(e)</summary><ul id="prob-list"></ul></details>
+      <div id="add-menu" class="addmenu" hidden></div>
+      <button id="add-btn" class="btn primary" type="button" aria-expanded="false">＋ Element hinzufügen</button>
+    </div>
+  </aside>
+  <main class="work">
+    <div id="form"></div>
+  </main>
+  <section class="prev" aria-label="Vorschau">
+    <div class="prev-h"><h2>Vorschau</h2><div class="row tight"><button class="btn sm" id="pv-toggle" type="button" title="Wechselt zwischen Start beim gewählten Element und Start von vorn">Start: <span id="pv-mode">Ab Auswahl</span></button><button class="btn sm" id="pv-restart" type="button">⟲</button></div></div>
+    <div class="phone"><div id="phone-in"></div></div>
+  </section>
+</div>
+<div id="player-root" hidden></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="modal-root"></div>
+<datalist id="varlist"></datalist>
+<input type="file" id="file-in" accept=".json,application/json" hidden>
+<script id="embedded-bound" type="application/json">null</script>
+<script>
+window.__SRC='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+'use strict';
+/* ============================================================
+   Bound Werkstatt – Kern: Hilfsfunktionen, Datenmodell, Spiel-Engine
+   (reine Logik, in Node testbar)
+   ============================================================ */
+const uid = () => 'e' + Math.random().toString(36).slice(2, 8);
+const clone = o => JSON.parse(JSON.stringify(o));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fmtTime = ms => { const s = Math.max(0, Math.round(ms / 1000)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
+const hashStr = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) { } }
+};
+
+/* ---------- Mini-Markdown (sicher: erst escapen, dann ersetzen) ---------- */
+function md(src) {
+  if (!src) return '';
+  const inline = s => s
+    .replace(/!\[([^\]]*)\]\(((?:https?:\/\/|data:image\/)[^\s)]+)\)/g, '<img alt="$1" src="$2">')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
+  const lines = esc(src).split('\n');
+  let out = '', para = [], list = [];
+  const flushP = () => { if (para.length) { out += '<p>' + para.map(inline).join('<br>') + '</p>'; para = []; } };
+  const flushL = () => { if (list.length) { out += '<ul>' + list.map(l => '<li>' + inline(l) + '</li>').join('') + '</ul>'; list = []; } };
+  for (const ln of lines) {
+    let m;
+    if (/^\s*$/.test(ln)) { flushP(); flushL(); }
+    else if ((m = ln.match(/^#{1,3}\s+(.*)$/))) { flushP(); flushL(); out += '<h4>' + inline(m[1]) + '</h4>'; }
+    else if ((m = ln.match(/^\s*[-*]\s+(.*)$/))) { flushP(); list.push(m[1]); }
+    else { flushL(); para.push(ln); }
+  }
+  flushP(); flushL();
+  return out;
+}
+
+/* ---------- Geo ---------- */
+const rad = d => d * Math.PI / 180;
+function haversine(a, b, c, d) {
+  const dLat = rad(c - a), dLon = rad(d - b);
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a)) * Math.cos(rad(c)) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(x));
+}
+function bearing(a, b, c, d) {
+  const y = Math.sin(rad(d - b)) * Math.cos(rad(c));
+  const x = Math.cos(rad(a)) * Math.sin(rad(c)) - Math.sin(rad(a)) * Math.cos(rad(c)) * Math.cos(rad(d - b));
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+const fmtDist = m => m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1).replace('.', ',') + ' km';
+/** Punkt in Entfernung dist (m) und Richtung brg (Grad) von lat/lon */
+function offsetPoint(lat, lon, dist, brg) {
+  const d = dist / 6371000, b = rad(brg), la = rad(lat), lo = rad(lon);
+  const la2 = Math.asin(Math.sin(la) * Math.cos(d) + Math.cos(la) * Math.sin(d) * Math.cos(b));
+  const lo2 = lo + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(la), Math.cos(d) - Math.sin(la) * Math.sin(la2));
+  return [la2 * 180 / Math.PI, lo2 * 180 / Math.PI];
+}
+
+/* ---------- Bedingungen & Aktionen ---------- */
+const OPS = ['==', '!=', '>', '>=', '<', '<='];
+const BUILTIN_VARS = ['score', 'correct', 'wrong'];
+function coerce(v) {
+  if (typeof v === 'number') return v;
+  const s = String(v == null ? '' : v).trim().replace(',', '.');
+  return s !== '' && !isNaN(Number(s)) ? Number(s) : String(v == null ? '' : v);
+}
+function cmp(a, op, b) {
+  a = coerce(a); b = coerce(b);
+  switch (op) {
+    case '==': return a == b; case '!=': return a != b;
+    case '>': return a > b; case '>=': return a >= b;
+    case '<': return a < b; case '<=': return a <= b;
+  }
+  return false;
+}
+const evalConds = (conds, vars) => (conds || []).every(c => !c.var || cmp(vars[c.var] == null ? 0 : vars[c.var], c.op, c.value));
+function applyActions(actions, vars) {
+  for (const a of actions || []) {
+    if (!a.var) continue;
+    const cur = vars[a.var], val = coerce(a.value);
+    if (a.op === 'add') vars[a.var] = (Number(cur) || 0) + (Number(val) || 0);
+    else if (a.op === 'sub') vars[a.var] = (Number(cur) || 0) - (Number(val) || 0);
+    else vars[a.var] = val;
+  }
+}
+
+/* ---------- Quiz-Auswertung ---------- */
+function normText(s, cs) {
+  s = String(s == null ? '' : s).normalize('NFKC').replace(/\s+/g, ' ').trim().replace(/[.,;:!?'"„“”‚‘’()\-–]/g, '');
+  return cs ? s : s.toLowerCase();
+}
+function checkQuiz(el, a) {
+  switch (el.sub) {
+    case 'single': return !!(el.options[a] && el.options[a].correct);
+    case 'multi': return el.options.every((o, i) => !!o.correct === a.includes(i));
+    case 'text': return (el.answers || []).some(x => normText(x, el.caseSensitive) === normText(a, el.caseSensitive));
+    case 'number': {
+      const n = Number(String(a).trim().replace(',', '.'));
+      return String(a).trim() !== '' && !isNaN(n) && Math.abs(n - Number(el.value)) <= Math.abs(Number(el.tolerance) || 0) + 1e-9;
+    }
+    case 'sort': return a.every((orig, pos) => orig === pos);
+    case 'match': return a.every((r, i) => r === i);
+  }
+  return false;
+}
+function solutionText(el) {
+  switch (el.sub) {
+    case 'single': case 'multi': return el.options.filter(o => o.correct).map(o => o.text).join(', ');
+    case 'text': return (el.answers || [])[0] || '';
+    case 'number': return String(el.value).replace('.', ',') + (Number(el.tolerance) ? ' (± ' + el.tolerance + ')' : '');
+    case 'sort': return (el.items || []).join(' → ');
+    case 'match': return (el.pairs || []).map(p => p.l + ' = ' + p.r).join('; ');
+  }
+  return '';
+}
+
+/* ---------- Elementtypen ---------- */
+const TYPE_DEFS = {
+  info: { label: 'Info', cat: 'Inhalt', icon: 'i', desc: 'Text, Bild, Audio oder Video', make: () => ({ title: 'Neue Info', text: '', image: '', audio: '', video: '', buttonLabel: 'Weiter' }) },
+  quiz: { label: 'Quiz', cat: 'Aufgaben', icon: '?', desc: 'Auswahl, Text, Zahl, Sortieren, Zuordnen', make: () => ({ title: 'Neue Frage', sub: 'single', text: '', image: '', options: [{ text: 'Antwort A', correct: true }, { text: 'Antwort B', correct: false }], answers: [], caseSensitive: false, value: 0, tolerance: 0, items: ['Erstes', 'Zweites', 'Drittes'], pairs: [{ l: 'Links 1', r: 'Rechts 1' }, { l: 'Links 2', r: 'Rechts 2' }], points: 10, attempts: 2, penalty: 50, shuffle: true, timeLimit: 0, hint: '', hintCost: 2, feedbackRight: 'Richtig!', feedbackWrong: 'Leider falsch.', explain: '', nextRight: '', nextWrong: '' }) },
+  mission: { label: 'Aufgabe', cat: 'Aufgaben', icon: '▣', desc: 'Foto, Video, Audio, Text oder Datei abgeben', make: () => ({ title: 'Neue Aufgabe', kind: 'photo', text: '', points: 10, optional: false }) },
+  code: { label: 'Code finden', cat: 'Aufgaben', icon: '▦', desc: 'QR-Code scannen oder Code eintippen', make: () => ({ title: 'Code finden', text: '', codes: ['STATION1'], scan: true, points: 10, hint: '', allowSkip: false }) },
+  location: { label: 'Ort finden', cat: 'Aufgaben', icon: '◎', desc: 'GPS-Ziel mit Kompass und Karte', make: () => ({ title: 'Ort finden', text: '', lat: 48.2082, lon: 16.3738, radius: 25, points: 10, showDistance: true, showMap: true, allowSkip: false }) },
+  survey: { label: 'Umfrage', cat: 'Aufgaben', icon: '☰', desc: 'Antworten ohne Punkte einsammeln', make: () => ({ title: 'Neue Umfrage', sub: 'choice', text: '', options: ['Ja', 'Nein'], required: true }) },
+  timer: { label: 'Timer', cat: 'Ablauf', icon: '◷', desc: 'Warten oder Countdown', make: () => ({ title: 'Kurze Pause', text: '', seconds: 30, skippable: false }) },
+  choice: { label: 'Verzweigung', cat: 'Ablauf', icon: '⑂', desc: 'Spieler wählen den nächsten Weg', make: () => ({ title: 'Welchen Weg nimmst du?', text: '', image: '', options: [{ label: 'Links', next: '', actions: [] }, { label: 'Rechts', next: '', actions: [] }] }) },
+  jump: { label: 'Sprung', cat: 'Ablauf', icon: '↪', desc: 'Weiche anhand von Variablen', make: () => ({ title: 'Weiche', rules: [{ var: 'score', op: '>=', value: 20, target: '' }] }) },
+  action: { label: 'Variable', cat: 'Ablauf', icon: '≡', desc: 'Punkte und Variablen unsichtbar ändern', make: () => ({ title: 'Variablen setzen' }) },
+  end: { label: 'Ende', cat: 'Ablauf', icon: '■', desc: 'Bound hier beenden', make: () => ({ title: 'Ende', text: '' }) }
+};
+const POINT_TYPES = new Set(['quiz', 'mission', 'code', 'location']);
+const AUTO_TYPES = new Set(['action', 'jump']);
+
+function makeElement(type) {
+  const d = TYPE_DEFS[type];
+  return Object.assign({ id: uid(), type, cond: [], actions: [], next: '' }, clone(d.make()));
+}
+function blankBound() {
+  return {
+    format: 'bound-werkstatt', version: 1,
+    meta: { title: 'Neuer Bound', description: '', author: '', cover: '', lang: 'de', askName: true, askTeam: false, timeLimit: 0, showScore: true, showTimer: true, leaderboard: true, finalText: 'Danke fürs Mitspielen, {name}! Du hast **{score}** Punkte gesammelt.', variables: [] },
+    elements: []
+  };
+}
+function normalizeBound(raw) {
+  if (!raw || typeof raw !== 'object') throw new Error('Das ist keine gültige Bound-Datei.');
+  if (!Array.isArray(raw.elements)) throw new Error('Das Feld "elements" fehlt.');
+  const warnings = [], b = blankBound(), seen = new Set();
+  if (raw.meta && typeof raw.meta === 'object') Object.assign(b.meta, raw.meta);
+  if (!Array.isArray(b.meta.variables)) b.meta.variables = [];
+  raw.elements.forEach((e, i) => {
+    if (!e || !TYPE_DEFS[e.type]) { warnings.push(`Element ${i + 1}: unbekannter Typ "${e && e.type}" übersprungen.`); return; }
+    const el = Object.assign(makeElement(e.type), e);
+    if (!el.id || seen.has(el.id)) el.id = uid();
+    seen.add(el.id);
+    ['cond', 'actions'].forEach(k => { if (!Array.isArray(el[k])) el[k] = []; });
+    b.elements.push(el);
+  });
+  return { bound: b, warnings };
+}
+function varNames(bound) {
+  return BUILTIN_VARS.concat((bound.meta.variables || []).map(v => v.name).filter(Boolean));
+}
+function findProblems(bound) {
+  const out = [], ids = new Set(bound.elements.map(e => e.id));
+  const add = (el, msg) => out.push({ id: el.id, msg });
+  const badTarget = t => t && t !== '__end' && !ids.has(t);
+  if (!bound.elements.length) out.push({ id: null, msg: 'Der Bound hat noch keine Elemente.' });
+  bound.elements.forEach(el => {
+    if (badTarget(el.next)) add(el, 'Das Ziel „Danach weiter mit“ existiert nicht mehr.');
+    if (el.type === 'quiz') {
+      if ((el.sub === 'single' || el.sub === 'multi')) {
+        if (!el.options.some(o => o.correct)) add(el, 'Keine Antwort ist als richtig markiert.');
+        if (el.options.length < 2) add(el, 'Mindestens zwei Antworten nötig.');
+      }
+      if (el.sub === 'text' && !(el.answers || []).some(a => a.trim())) add(el, 'Keine richtige Textantwort eingetragen.');
+      if (el.sub === 'sort' && (el.items || []).length < 2) add(el, 'Zum Sortieren braucht es mindestens zwei Einträge.');
+      if (el.sub === 'match' && (el.pairs || []).length < 2) add(el, 'Zum Zuordnen braucht es mindestens zwei Paare.');
+      if (badTarget(el.nextRight) || badTarget(el.nextWrong)) add(el, 'Ein Ziel für richtig/falsch existiert nicht mehr.');
+    }
+    if (el.type === 'code' && !(el.codes || []).some(c => c.trim())) add(el, 'Kein Code eingetragen.');
+    if (el.type === 'location' && (isNaN(Number(el.lat)) || isNaN(Number(el.lon)))) add(el, 'Koordinaten fehlen.');
+    if (el.type === 'choice') {
+      if (!(el.options || []).length) add(el, 'Keine Auswahlmöglichkeiten.');
+      (el.options || []).forEach(o => { if (badTarget(o.next)) add(el, `Ziel von „${o.label}“ existiert nicht mehr.`); });
+    }
+    if (el.type === 'jump') (el.rules || []).forEach(r => { if (badTarget(r.target)) add(el, 'Ein Sprungziel existiert nicht mehr.'); });
+    if (el.type === 'survey' && el.sub !== 'text' && el.sub !== 'rating' && !(el.options || []).length) add(el, 'Keine Antwortmöglichkeiten.');
+    if (el.type === 'timer' && !(Number(el.seconds) >= 0)) add(el, 'Ungültige Sekundenzahl.');
+  });
+  return out;
+}
+
+/* ---------- Spiel-Engine ---------- */
+class Game {
+  constructor(bound) { this.bound = bound; this.reset(); }
+  get els() { return this.bound.elements; }
+  reset() {
+    this.vars = { score: 0, correct: 0, wrong: 0 };
+    (this.bound.meta.variables || []).forEach(v => { if (v.name) this.vars[v.name] = coerce(v.initial == null ? 0 : v.initial); });
+    this.log = []; this.cur = null; this.curIdx = -1; this.finished = false; this.finishReason = '';
+    this.startedAt = null; this.finishedAt = null; this.name = ''; this.team = ''; this.maxPts = 0; this.steps = 0; this.endText = '';
+  }
+  index(id) { return this.els.findIndex(e => e.id === id); }
+  start(name, team, fromId) {
+    this.reset(); this.startedAt = Date.now(); this.name = name || ''; this.team = team || '';
+    const i = fromId ? this.index(fromId) : 0;
+    this.goIdx(i < 0 ? 0 : i);
+  }
+  resolveTarget(t, i) {
+    if (t === '__end') { this.finish(); return -1; }
+    if (t) { const k = this.index(t); if (k >= 0) return k; }
+    return i + 1;
+  }
+  goIdx(i) {
+    for (;;) {
+      if (++this.steps > 5000) { this.finish('loop'); return; }
+      const el = this.els[i];
+      if (!el) { this.finish(); return; }
+      if (!evalConds(el.cond, this.vars)) { i++; continue; }
+      if (el.type === 'action') {
+        applyActions(el.actions, this.vars);
+        i = this.resolveTarget(el.next, i); if (i < 0) return; continue;
+      }
+      if (el.type === 'jump') {
+        let t = null;
+        for (const r of el.rules || []) if (r.var && cmp(this.vars[r.var] == null ? 0 : this.vars[r.var], r.op, r.value)) { t = r.target; break; }
+        if (t == null) t = el.next;
+        i = this.resolveTarget(t, i); if (i < 0) return; continue;
+      }
+      if (el.type === 'end') { this.endText = el.text || ''; this.cur = null; this.finish(); return; }
+      this.cur = el; this.curIdx = i; this.enteredAt = Date.now(); return;
+    }
+  }
+  /** res: {points, max, correct(bool|null), answer, next} */
+  complete(res) {
+    const el = this.cur; if (!el) return;
+    res = res || {};
+    const pts = Number(res.points) || 0, max = Number(res.max) || 0;
+    this.vars.score += pts; this.maxPts += max;
+    if (res.correct === true) this.vars.correct++; else if (res.correct === false) this.vars.wrong++;
+    this.log.push({ id: el.id, title: el.title, type: el.type, sub: el.sub || el.kind || '', points: pts, max, correct: res.correct == null ? null : res.correct, answer: res.answer == null ? null : res.answer, t: Date.now() - this.startedAt, skipped: !!res.skipped });
+    applyActions(el.actions, this.vars);
+    const t = res.next != null && res.next !== '' ? res.next : el.next;
+    const i = this.resolveTarget(t, this.curIdx);
+    if (i >= 0) this.goIdx(i);
+  }
+  finish(reason) {
+    if (this.finished) return;
+    this.finished = true; this.finishReason = reason || ''; this.finishedAt = Date.now(); this.cur = null;
+  }
+  get duration() { return (this.finishedAt || Date.now()) - (this.startedAt || Date.now()); }
+  results() {
+    return {
+      format: 'bound-werkstatt-result', bound: this.bound.meta.title, name: this.name, team: this.team,
+      score: this.vars.score, maxScore: this.maxPts, durationSec: Math.round(this.duration / 1000),
+      finishedAt: new Date(this.finishedAt || Date.now()).toISOString(), variables: Object.assign({}, this.vars), steps: this.log
+    };
+  }
+  serialize() {
+    return {
+      vars: this.vars, maxPts: this.maxPts, name: this.name, team: this.team, startedAt: this.startedAt, finished: this.finished,
+      curId: this.cur ? this.cur.id : null, steps: this.steps,
+      log: this.log.map(l => Object.assign({}, l, { answer: typeof l.answer === 'string' && l.answer.length > 300 ? '[Datei]' : l.answer }))
+    };
+  }
+  restore(s) {
+    this.reset(); Object.assign(this, { vars: s.vars, maxPts: s.maxPts, name: s.name, team: s.team, startedAt: s.startedAt, log: s.log, steps: s.steps || 0 });
+    if (s.finished) { this.finished = true; this.finishedAt = Date.now(); return; }
+    const i = this.index(s.curId);
+    if (i < 0) this.goIdx(0); else { this.cur = this.els[i]; this.curIdx = i; this.enteredAt = Date.now(); }
+  }
+}
+
+if (typeof module !== 'undefined') module.exports = { uid, clone, esc, md, shuffle, haversine, bearing, offsetPoint, fmtDist, fmtTime, hashStr, coerce, cmp, evalConds, applyActions, normText, checkQuiz, solutionText, TYPE_DEFS, makeElement, blankBound, normalizeBound, findProblems, varNames, Game, OPS, BUILTIN_VARS, POINT_TYPES, AUTO_TYPES };
+
+/* ============================================================
+   QR-Code-Generator (Byte-Modus, Fehlerkorrektur M, Version 1–10)
+   Eigene schlanke Implementierung nach ISO/IEC 18004.
+   ============================================================ */
+const QR = (() => {
+  const ECC_PER_BLOCK = [0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26];
+  const NUM_BLOCKS = [0, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5];
+  const rawModules = v => {
+    let r = (16 * v + 128) * v + 64;
+    if (v >= 2) { const n = Math.floor(v / 7) + 2; r -= (25 * n - 10) * n - 55; if (v >= 7) r -= 36; }
+    return r;
+  };
+  const dataCodewords = v => Math.floor(rawModules(v) / 8) - ECC_PER_BLOCK[v] * NUM_BLOCKS[v];
+  const gfMul = (x, y) => { let z = 0; for (let i = 7; i >= 0; i--) { z = (z << 1) ^ ((z >>> 7) * 0x11D); z ^= ((y >>> i) & 1) * x; } return z; };
+  const rsDivisor = d => {
+    const r = new Array(d).fill(0); r[d - 1] = 1; let root = 1;
+    for (let i = 0; i < d; i++) { for (let j = 0; j < d; j++) { r[j] = gfMul(r[j], root); if (j + 1 < d) r[j] ^= r[j + 1]; } root = gfMul(root, 2); }
+    return r;
+  };
+  const rsRemainder = (data, div) => {
+    const r = new Array(div.length).fill(0);
+    for (const b of data) { const f = b ^ r.shift(); r.push(0); div.forEach((c, i) => { r[i] ^= gfMul(c, f); }); }
+    return r;
+  };
+  const bit = (x, i) => ((x >>> i) & 1) !== 0;
+
+  function encode(text) {
+    const bytes = Array.from(new TextEncoder().encode(String(text)));
+    let ver = 1;
+    for (; ver <= 10; ver++) { if (4 + (ver < 10 ? 8 : 16) + bytes.length * 8 <= dataCodewords(ver) * 8) break; }
+    if (ver > 10) throw new Error('Text für den QR-Code zu lang (max. ca. 210 Zeichen).');
+    // Bitstrom
+    const bits = [];
+    const put = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+    put(4, 4); put(bytes.length, ver < 10 ? 8 : 16); bytes.forEach(b => put(b, 8));
+    const cap = dataCodewords(ver) * 8;
+    put(0, Math.min(4, cap - bits.length));
+    put(0, (8 - bits.length % 8) % 8);
+    for (let pad = 0xEC; bits.length < cap; pad ^= 0xEC ^ 0x11) put(pad, 8);
+    const data = [];
+    for (let i = 0; i < bits.length; i += 8) { let v = 0; for (let j = 0; j < 8; j++) v = (v << 1) | bits[i + j]; data.push(v); }
+    // Fehlerkorrektur + Interleaving
+    const nb = NUM_BLOCKS[ver], eccLen = ECC_PER_BLOCK[ver], raw = Math.floor(rawModules(ver) / 8);
+    const shortBlocks = nb - raw % nb, shortLen = Math.floor(raw / nb), div = rsDivisor(eccLen);
+    const blocks = []; let k = 0;
+    for (let i = 0; i < nb; i++) {
+      const dat = data.slice(k, k + shortLen - eccLen + (i < shortBlocks ? 0 : 1)); k += dat.length;
+      const ecc = rsRemainder(dat, div); if (i < shortBlocks) dat.push(0);
+      blocks.push(dat.concat(ecc));
+    }
+    const all = [];
+    for (let i = 0; i < blocks[0].length; i++) blocks.forEach((b, j) => { if (i !== shortLen - eccLen || j >= shortBlocks) all.push(b[i]); });
+    return build(ver, all);
+  }
+
+  function build(ver, codewords) {
+    const size = ver * 4 + 17;
+    const mod = Array.from({ length: size }, () => new Array(size).fill(false));
+    const fn = Array.from({ length: size }, () => new Array(size).fill(false));
+    const setF = (x, y, d) => { mod[y][x] = d; fn[y][x] = true; };
+    for (let i = 0; i < size; i++) { setF(6, i, i % 2 === 0); setF(i, 6, i % 2 === 0); }
+    const finder = (cx, cy) => {
+      for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+        const d = Math.max(Math.abs(dx), Math.abs(dy)), x = cx + dx, y = cy + dy;
+        if (x >= 0 && x < size && y >= 0 && y < size) setF(x, y, d !== 2 && d !== 4);
+      }
+    };
+    finder(3, 3); finder(size - 4, 3); finder(3, size - 4);
+    const align = [];
+    if (ver > 1) {
+      const n = Math.floor(ver / 7) + 2, step = ver === 32 ? 26 : Math.ceil((ver * 4 + 4) / (n * 2 - 2)) * 2;
+      align.push(6); for (let p = size - 7; align.length < n; p -= step) align.splice(1, 0, p);
+    }
+    align.forEach((ax, i) => align.forEach((ay, j) => {
+      if ((i === 0 && j === 0) || (i === 0 && j === align.length - 1) || (i === align.length - 1 && j === 0)) return;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) setF(ax + dx, ay + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+    }));
+    const drawFormat = mask => {
+      const d = (0 << 3) | mask; let r = d;
+      for (let i = 0; i < 10; i++) r = (r << 1) ^ ((r >>> 9) * 0x537);
+      const bits = ((d << 10) | r) ^ 0x5412;
+      for (let i = 0; i <= 5; i++) setF(8, i, bit(bits, i));
+      setF(8, 7, bit(bits, 6)); setF(8, 8, bit(bits, 7)); setF(7, 8, bit(bits, 8));
+      for (let i = 9; i < 15; i++) setF(14 - i, 8, bit(bits, i));
+      for (let i = 0; i < 8; i++) setF(size - 1 - i, 8, bit(bits, i));
+      for (let i = 8; i < 15; i++) setF(8, size - 15 + i, bit(bits, i));
+      setF(8, size - 8, true);
+    };
+    drawFormat(0);
+    if (ver >= 7) {
+      let r = ver; for (let i = 0; i < 12; i++) r = (r << 1) ^ ((r >>> 11) * 0x1F25);
+      const bits = (ver << 12) | r;
+      for (let i = 0; i < 18; i++) { const c = bit(bits, i), a = size - 11 + i % 3, b = Math.floor(i / 3); setF(a, b, c); setF(b, a, c); }
+    }
+    // Daten im Zickzack
+    let i = 0;
+    for (let right = size - 1; right >= 1; right -= 2) {
+      if (right === 6) right = 5;
+      for (let vert = 0; vert < size; vert++) for (let j = 0; j < 2; j++) {
+        const x = right - j, up = ((right + 1) & 2) === 0, y = up ? size - 1 - vert : vert;
+        if (!fn[y][x] && i < codewords.length * 8) { mod[y][x] = bit(codewords[i >>> 3], 7 - (i & 7)); i++; }
+      }
+    }
+    // Beste Maske nach Strafpunkten
+    const maskFn = [(x, y) => (x + y) % 2 === 0, (x, y) => y % 2 === 0, (x) => x % 3 === 0, (x, y) => (x + y) % 3 === 0,
+      (x, y) => (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0, (x, y) => x * y % 2 + x * y % 3 === 0,
+      (x, y) => (x * y % 2 + x * y % 3) % 2 === 0, (x, y) => ((x + y) % 2 + x * y % 3) % 2 === 0];
+    const applyMask = m => { for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (!fn[y][x] && maskFn[m](x, y)) mod[y][x] = !mod[y][x]; };
+    let best = 0, bestScore = Infinity;
+    for (let m = 0; m < 8; m++) {
+      applyMask(m); drawFormat(m);
+      const s = penalty(mod, size);
+      if (s < bestScore) { bestScore = s; best = m; }
+      applyMask(m);
+    }
+    applyMask(best); drawFormat(best);
+    return mod;
+  }
+
+  function penalty(m, size) {
+    let p = 0;
+    const lineScore = get => {
+      let s = 0;
+      for (let a = 0; a < size; a++) {
+        let run = 1;
+        for (let b = 1; b < size; b++) {
+          if (get(a, b) === get(a, b - 1)) { run++; if (run === 5) s += 3; else if (run > 5) s++; } else run = 1;
+        }
+        // Finder-ähnliche Muster 1:1:3:1:1 mit 4 hellen Modulen
+        const row = []; for (let b = 0; b < size; b++) row.push(get(a, b) ? 1 : 0);
+        const str = row.join('');
+        for (const pat of ['10111010000', '00001011101']) { let idx = -1; while ((idx = str.indexOf(pat, idx + 1)) >= 0) s += 40; }
+      }
+      return s;
+    };
+    p += lineScore((a, b) => m[a][b]) + lineScore((a, b) => m[b][a]);
+    for (let y = 0; y < size - 1; y++) for (let x = 0; x < size - 1; x++) { const c = m[y][x]; if (c === m[y][x + 1] && c === m[y + 1][x] && c === m[y + 1][x + 1]) p += 3; }
+    let dark = 0; m.forEach(r => r.forEach(c => { if (c) dark++; }));
+    p += (Math.ceil(Math.abs(dark * 20 - size * size * 10) / (size * size)) - 1) * 10;
+    return p;
+  }
+
+  function svg(text, opt) {
+    opt = opt || {};
+    const m = encode(text), n = m.length, q = opt.margin == null ? 4 : opt.margin, fg = opt.fg || '#000', bg = opt.bg || '#fff';
+    let d = '';
+    m.forEach((row, y) => { let x = 0; while (x < n) { if (row[x]) { let w = 1; while (x + w < n && row[x + w]) w++; d += `M${x + q} ${y + q}h${w}v1h-${w}z`; x += w; } else x++; } });
+    const t = n + q * 2;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${t} ${t}" shape-rendering="crispEdges" role="img" aria-label="QR-Code"><rect width="${t}" height="${t}" fill="${bg}"/><path d="${d}" fill="${fg}"/></svg>`;
+  }
+  return { encode, svg };
+})();
+if (typeof module !== 'undefined') module.exports = QR;
+
+/* ============================================================
+   UI-Helfer: DOM, Toast, Dateien, Karte (OSM-Kacheln, ohne Bibliothek)
+   ============================================================ */
+function h(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  if (props) for (const [k, v] of Object.entries(props)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') e.className = v;
+    else if (k === 'html') e.innerHTML = v;
+    else if (k === 'text') e.textContent = v;
+    else if (k === 'style' && typeof v === 'object') Object.assign(e.style, v);
+    else if (k.startsWith('on') && typeof v === 'function') e.addEventListener(k.slice(2), v);
+    else if (['value', 'checked', 'disabled', 'type', 'placeholder', 'rows', 'min', 'max', 'step', 'id', 'src', 'href', 'title', 'accept', 'multiple', 'selected', 'autocomplete', 'readOnly', 'draggable', 'download', 'target', 'rel', 'controls', 'inputMode'].includes(k)) { try { e[k] = v; } catch (x) { e.setAttribute(k, v); } }
+    else e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat(3)) { if (c == null || c === false) continue; e.append(c.nodeType ? c : document.createTextNode(c)); }
+  return e;
+}
+const $ = (s, r) => (r || document).querySelector(s);
+
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast'); if (!t) return;
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); toast('In die Zwischenablage kopiert'); return true; } catch (e) { }
+  try {
+    const ta = h('textarea', { value: text, style: { position: 'fixed', opacity: '0' } }); document.body.append(ta); ta.select();
+    const ok = document.execCommand('copy'); ta.remove(); if (ok) { toast('In die Zwischenablage kopiert'); return true; }
+  } catch (e) { }
+  toast('Kopieren nicht möglich – nutze die JSON-Quelle.'); return false;
+}
+async function saveFile(name, text, mime) {
+  try {
+    if (window.claude && window.claude.use) {
+      const d = await window.claude.use('downloads');
+      if (d) { await d.save({ filename: name, data: text }); toast('„' + name + '“ gespeichert'); return true; }
+    }
+  } catch (e) { if (e && e.code === 'declined') return false; }
+  try {
+    const url = URL.createObjectURL(new Blob([text], { type: mime || 'application/octet-stream' }));
+    const a = h('a', { href: url, download: name }); document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000); toast('„' + name + '“ heruntergeladen'); return true;
+  } catch (e) { toast('Download hier nicht möglich – bitte kopieren.'); return false; }
+}
+function slug(s) { return String(s || 'bound').toLowerCase().replace(/ß/g, 'ss').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w]+/g, '-').replace(/^-+|-+$/g, '') || 'bound'; }
+
+async function fileToDataURL(file, max) {
+  max = max || 1024;
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+    const s = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.width * s)); c.height = Math.max(1, Math.round(img.height * s));
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.82);
+  } finally { URL.revokeObjectURL(url); }
+}
+
+/* ---------- Karte mit OSM-Kacheln ---------- */
+class SlippyMap {
+  constructor(el, o) {
+    o = o || {};
+    this.el = el; this.lat = o.lat == null ? 48.2082 : o.lat; this.lon = o.lon == null ? 16.3738 : o.lon; this.z = o.zoom || 16;
+    this.onPick = o.onPick; this.interactive = o.interactive !== false;
+    this.target = null; this.user = null; this.tiles = new Map();
+    el.classList.add('smap');
+    this.layer = h('div', { class: 'smap-tiles' });
+    this.cv = h('canvas', { class: 'smap-over' });
+    this.note = h('div', { class: 'smap-note' }, 'Kartenkacheln werden hier nicht geladen. Ziel und Position erscheinen trotzdem im Raster.');
+    this.note.hidden = true;
+    el.append(this.layer, this.cv,
+      h('div', { class: 'smap-zoom' }, h('button', { type: 'button', title: 'Vergrößern', onclick: () => this.zoom(1) }, '+'), h('button', { type: 'button', title: 'Verkleinern', onclick: () => this.zoom(-1) }, '−')),
+      h('div', { class: 'smap-attr' }, h('a', { href: 'https://www.openstreetmap.org/copyright', target: '_blank', rel: 'noopener' }, '© OpenStreetMap')), this.note);
+    this.errors = 0; this.loaded = 0;
+    if (this.interactive) this.bind();
+    this.ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => this.draw()) : null;
+    if (this.ro) this.ro.observe(el);
+    this.draw();
+  }
+  destroy() { if (this.ro) this.ro.disconnect(); }
+  proj(lat, lon, z) {
+    const n = 256 * 2 ** z, s = Math.sin(lat * Math.PI / 180);
+    return [(lon + 180) / 360 * n, (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n];
+  }
+  unproj(x, y, z) {
+    const n = 256 * 2 ** z;
+    return [Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n))) * 180 / Math.PI, x / n * 360 - 180];
+  }
+  setView(lat, lon, z) { this.lat = lat; this.lon = lon; if (z) this.z = z; this.draw(); }
+  setTarget(lat, lon, r) { this.target = { lat, lon, r }; this.draw(); }
+  setUser(lat, lon, acc) { this.user = { lat, lon, acc }; this.draw(); }
+  fit() {
+    if (!this.target || !this.user) return;
+    const w = this.el.clientWidth, hh = this.el.clientHeight;
+    for (let z = 18; z >= 3; z--) {
+      const a = this.proj(this.target.lat, this.target.lon, z), b = this.proj(this.user.lat, this.user.lon, z);
+      if (Math.abs(a[0] - b[0]) < w * 0.7 && Math.abs(a[1] - b[1]) < hh * 0.7) { this.z = z; break; }
+    }
+    this.lat = (this.target.lat + this.user.lat) / 2; this.lon = (this.target.lon + this.user.lon) / 2; this.draw();
+  }
+  zoom(d) { this.z = Math.max(2, Math.min(19, this.z + d)); this.draw(); }
+  draw() {
+    const w = this.el.clientWidth, hh = this.el.clientHeight; if (!w || !hh) return;
+    const [cx, cy] = this.proj(this.lat, this.lon, this.z), z = this.z, n = 2 ** z;
+    const x0 = Math.floor((cx - w / 2) / 256), x1 = Math.floor((cx + w / 2) / 256), y0 = Math.floor((cy - hh / 2) / 256), y1 = Math.floor((cy + hh / 2) / 256);
+    const need = new Set();
+    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
+      if (ty < 0 || ty >= n) continue;
+      const wx = ((tx % n) + n) % n, key = z + '/' + wx + '/' + ty + '@' + tx; need.add(key);
+      let img = this.tiles.get(key);
+      if (!img) {
+        img = new Image(); img.alt = ''; img.draggable = false; img.className = 'smap-tile';
+        img.onload = () => { this.loaded++; this.note.hidden = true; img.style.visibility = 'visible'; };
+        img.onerror = () => { img.remove(); if (++this.errors > 2 && !this.loaded) this.note.hidden = false; };
+        img.style.visibility = 'hidden';
+        img.src = `https://tile.openstreetmap.org/${z}/${wx}/${ty}.png`;
+        this.layer.append(img); this.tiles.set(key, img);
+      }
+      img.style.transform = `translate(${Math.round(tx * 256 - cx + w / 2)}px,${Math.round(ty * 256 - cy + hh / 2)}px)`;
+    }
+    for (const [k, img] of this.tiles) if (!need.has(k)) { img.remove(); this.tiles.delete(k); }
+    // Overlay
+    const dpr = window.devicePixelRatio || 1;
+    if (this.cv.width !== w * dpr || this.cv.height !== hh * dpr) { this.cv.width = w * dpr; this.cv.height = hh * dpr; this.cv.style.width = w + 'px'; this.cv.style.height = hh + 'px'; }
+    const g = this.cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, hh);
+    const sc = (lat, lon) => { const p = this.proj(lat, lon, z); return [p[0] - cx + w / 2, p[1] - cy + hh / 2]; };
+    const mpp = lat => 156543.03392 * Math.cos(lat * Math.PI / 180) / 2 ** z;
+    const css = getComputedStyle(this.el), accent = css.getPropertyValue('--accent').trim() || '#b02468', blue = '#1a73e8';
+    if (this.target) {
+      const [x, y] = sc(this.target.lat, this.target.lon), r = Math.max(6, this.target.r / mpp(this.target.lat));
+      g.lineWidth = 3; g.strokeStyle = accent; g.fillStyle = accent + '33';
+      g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); g.stroke();
+      g.beginPath(); g.arc(x, y, 3.5, 0, 7); g.fillStyle = accent; g.fill();
+    }
+    if (this.user) {
+      const [x, y] = sc(this.user.lat, this.user.lon), r = Math.max(8, (this.user.acc || 0) / mpp(this.user.lat));
+      g.fillStyle = blue + '26'; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+      g.fillStyle = blue; g.strokeStyle = '#fff'; g.lineWidth = 2.5; g.beginPath(); g.arc(x, y, 7, 0, 7); g.fill(); g.stroke();
+    }
+  }
+  bind() {
+    let drag = null, moved = false;
+    const el = this.el;
+    el.addEventListener('pointerdown', e => { if (e.target.closest('.smap-zoom,.smap-attr')) return; drag = { x: e.clientX, y: e.clientY }; moved = false; el.setPointerCapture(e.pointerId); });
+    el.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 3) moved = true;
+      if (!moved) return;
+      const [cx, cy] = this.proj(this.lat, this.lon, this.z);
+      [this.lat, this.lon] = this.unproj(cx - dx, cy - dy, this.z); drag = { x: e.clientX, y: e.clientY }; this.draw();
+    });
+    el.addEventListener('pointerup', e => {
+      if (drag && !moved && this.onPick) {
+        const r = el.getBoundingClientRect(), [cx, cy] = this.proj(this.lat, this.lon, this.z);
+        const [la, lo] = this.unproj(cx + (e.clientX - r.left) - r.width / 2, cy + (e.clientY - r.top) - r.height / 2, this.z);
+        this.onPick(la, lo);
+      }
+      drag = null;
+    });
+    el.addEventListener('wheel', e => { e.preventDefault(); this.zoom(e.deltaY < 0 ? 1 : -1); }, { passive: false });
+  }
+}
+
+/* ============================================================
+   Player: spielt einen Bound im Browser (auch als Vorschau im Editor)
+   ============================================================ */
+class Player {
+  constructor(root, bound, o) {
+    this.root = root; this.bound = bound; this.o = o || {};
+    this.g = new Game(bound); this.stops = []; this.tick = null; this.saved = false;
+    this.key = 'bw:run:' + hashStr(bound.meta.title + '|' + bound.elements.map(e => e.id).join(','));
+    this.hsKey = 'bw:hs:' + hashStr(bound.meta.title);
+    root.replaceChildren(); root.classList.add('pl');
+    this.score = h('span', { class: 'pl-score' }, '0 Pkt.');
+    this.clock = h('span', { class: 'pl-clock' }, '0:00');
+    this.endBtn = h('button', { type: 'button', class: 'pl-endbtn', onclick: () => this.askEnd() }, 'Beenden');
+    this.bar = h('div', { class: 'pl-bar', hidden: true }, h('strong', { class: 'pl-name' }, bound.meta.title || 'Bound'), h('span', { class: 'pl-pills' }, this.score, this.clock), this.endBtn);
+    this.prog = h('div', { class: 'pl-prog', hidden: true }, h('i'));
+    this.body = h('div', { class: 'pl-body' });
+    this.dbg = this.o.preview ? h('details', { class: 'pl-dbg' }, h('summary', {}, 'Testwerkzeuge'), h('div', { class: 'pl-dbg-in' })) : null;
+    root.append(this.bar, this.prog, this.body); if (this.dbg) root.append(this.dbg);
+    document.title = bound.meta.title || document.title;
+    if (this.o.startAt) this.begin(this.o.startAt); else this.showStart();
+  }
+  destroy() { this.clearStops(); clearInterval(this.tick); }
+  clearStops() { this.stops.forEach(f => { try { f(); } catch (e) { } }); this.stops = []; }
+
+  /* ---------- Start ---------- */
+  showStart() {
+    this.clearStops(); clearInterval(this.tick); this.bar.hidden = true; this.prog.hidden = true;
+    const m = this.bound.meta, n = this.bound.elements.filter(e => !AUTO_TYPES.has(e.type) && e.type !== 'end').length;
+    const name = h('input', { type: 'text', id: 'pl-name-in', placeholder: 'Dein Name', autocomplete: 'nickname', value: this.nameMem || '' });
+    const team = h('input', { type: 'text', id: 'pl-team-in', placeholder: 'Teamname (optional)', value: this.teamMem || '' });
+    const saved = this.o.preview ? null : this.loadSaved();
+    const go = () => { this.nameMem = name.value.trim(); this.teamMem = team.value.trim(); if (m.askName && !this.o.preview && !this.nameMem) { name.focus(); name.classList.add('bad'); return; } this.begin(); };
+    this.body.replaceChildren(h('article', { class: 'pl-card pl-start' },
+      m.cover && h('img', { class: 'pl-cover', alt: '', src: m.cover }),
+      h('h1', {}, m.title || 'Bound'), m.author && h('p', { class: 'muted' }, 'von ' + m.author),
+      h('div', { class: 'pl-md', html: md(m.description) }),
+      h('div', { class: 'chips' }, h('span', { class: 'chip' }, n + ' Stationen'), Number(m.timeLimit) > 0 && h('span', { class: 'chip' }, m.timeLimit + ' Min. Zeit'), m.showScore !== false && h('span', { class: 'chip' }, 'Punkte zählen')),
+      m.askName && h('label', { class: 'fl', for: 'pl-name-in' }, 'Name', name),
+      m.askTeam && h('label', { class: 'fl', for: 'pl-team-in' }, 'Team', team),
+      h('div', { class: 'row' },
+        saved && h('button', { class: 'btn primary', type: 'button', onclick: () => this.resume(saved) }, 'Fortsetzen'),
+        h('button', { class: 'btn ' + (saved ? '' : 'primary'), type: 'button', onclick: () => { if (saved) store.del(this.key); go(); } }, saved ? 'Neu beginnen' : 'Los geht’s'))));
+    this.updateDebug();
+  }
+  loadSaved() {
+    const raw = store.get(this.key); if (!raw) return null;
+    try { const s = JSON.parse(raw); return s && !s.finished && s.curId ? s : null; } catch (e) { return null; }
+  }
+  begin(fromId) {
+    this.saved = false;
+    this.g.start(this.nameMem || (this.o.preview ? 'Vorschau' : ''), this.teamMem, fromId);
+    this.startClock(); this.afterStep();
+  }
+  resume(s) { this.g.restore(s); this.startClock(); this.afterStep(); }
+  startClock() {
+    clearInterval(this.tick); this.bar.hidden = false; this.prog.hidden = false;
+    this.tick = setInterval(() => this.onTick(), 1000); this.onTick();
+  }
+  onTick() {
+    const g = this.g; if (!g.startedAt || g.finished) return;
+    const lim = Number(this.bound.meta.timeLimit) * 60000, el = Date.now() - g.startedAt;
+    if (lim > 0) {
+      this.clock.textContent = '⏱ ' + fmtTime(lim - el);
+      if (el >= lim) { g.finish('time'); this.afterStep(); }
+    } else this.clock.textContent = '⏱ ' + fmtTime(el);
+  }
+  askEnd() {
+    if (this.endBtn.dataset.sure) { this.g.finish('abort'); this.afterStep(); return; }
+    this.endBtn.dataset.sure = '1'; this.endBtn.textContent = 'Sicher?';
+    setTimeout(() => { delete this.endBtn.dataset.sure; this.endBtn.textContent = 'Beenden'; }, 3000);
+  }
+
+  /* ---------- Ablauf ---------- */
+  afterStep() {
+    if (!this.o.preview) store.set(this.key, JSON.stringify(this.g.serialize()));
+    if (this.g.finished) this.showResult(); else this.showElement();
+  }
+  next(res) { this.g.complete(res); this.afterStep(); }
+  updateHeader() {
+    const m = this.bound.meta, g = this.g;
+    this.score.hidden = m.showScore === false; this.clock.hidden = m.showTimer === false && !(Number(m.timeLimit) > 0);
+    this.score.textContent = g.vars.score + ' Pkt.';
+    const total = this.bound.elements.length || 1, idx = g.finished ? total : Math.max(0, g.curIdx);
+    this.prog.firstChild.style.width = Math.min(100, Math.round(idx / total * 100)) + '%';
+  }
+  updateDebug() {
+    if (!this.dbg) return;
+    const box = this.dbg.lastChild, g = this.g;
+    box.replaceChildren(
+      h('div', { class: 'row' },
+        h('button', { class: 'btn sm', type: 'button', onclick: () => { this.destroyRestart(); } }, '⟲ Neustart'),
+        g.cur && h('button', { class: 'btn sm', type: 'button', onclick: () => this.next({ skipped: true, correct: null, points: 0 }) }, '⏭ Überspringen')),
+      h('pre', {}, JSON.stringify(g.vars, null, 1).replace(/[{}\n]/g, ' ').replace(/ +/g, ' ').trim() || '–'));
+  }
+  destroyRestart() { this.clearStops(); this.g.reset(); store.del(this.key); this.showStart(); }
+
+  media(el) {
+    const out = [];
+    const safe = u => /^(https?:|data:|blob:)/i.test(u || '');
+    if (safe(el.image)) out.push(h('img', { class: 'pl-img', alt: '', src: el.image }));
+    if (safe(el.audio)) out.push(h('audio', { class: 'pl-audio', controls: true, src: el.audio }));
+    if (safe(el.video)) {
+      const yt = String(el.video).match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{6,})/);
+      out.push(yt ? h('iframe', { class: 'pl-video', src: 'https://www.youtube-nocookie.com/embed/' + yt[1], title: 'Video', allowfullscreen: '', loading: 'lazy' })
+        : h('video', { class: 'pl-video', controls: true, src: el.video, playsinline: '' }));
+    }
+    return out;
+  }
+  showElement() {
+    this.clearStops();
+    const el = this.g.cur; this.updateHeader(); this.updateDebug();
+    const card = h('article', { class: 'pl-card pl-' + el.type });
+    const showTitle = el.title && !['jump', 'action'].includes(el.type);
+    card.append(
+      h('div', { class: 'pl-kind' }, TYPE_DEFS[el.type].label),
+      showTitle && h('h2', {}, el.title), this.media(el),
+      el.text && h('div', { class: 'pl-md', html: md(el.text) }));
+    this['r_' + el.type](el, card);
+    this.body.replaceChildren(card); this.body.scrollTop = 0;
+  }
+  btn(label, fn, cls) { return h('button', { type: 'button', class: 'btn ' + (cls || 'primary'), onclick: fn }, label); }
+  fb(kind, text, pts) {
+    return h('div', { class: 'pl-fb ' + kind, role: 'status' }, h('div', { html: md(text) }), pts > 0 && h('span', { class: 'chip pts' }, '+' + pts + ' Punkte'));
+  }
+
+  /* ---------- Elementtypen ---------- */
+  r_info(el, card) { card.append(h('div', { class: 'row' }, this.btn(el.buttonLabel || 'Weiter', () => this.next({})))); }
+
+  r_end() { }
+  r_jump() { }
+  r_action() { }
+
+  quizInput(el) {
+    let locked = false;
+    const idx = (el.options || []).map((_, i) => i);
+    const order = el.shuffle ? shuffle(idx) : idx;
+    if (el.sub === 'single' || el.sub === 'multi') {
+      const multi = el.sub === 'multi', on = new Set();
+      const rows = order.map(i => {
+        const b = h('button', { type: 'button', class: 'opt ' + (multi ? 'chk' : 'rad'), 'aria-pressed': 'false' }, h('span', { class: 'mk' }), h('span', {}, el.options[i].text));
+        b.onclick = () => {
+          if (locked) return;
+          if (multi) { on.has(i) ? on.delete(i) : on.add(i); } else { on.clear(); on.add(i); }
+          rows.forEach(r => { const s = on.has(r.i); r.b.classList.toggle('on', s); r.b.setAttribute('aria-pressed', String(s)); });
+        };
+        return { b, i };
+      });
+      return {
+        node: h('div', { class: 'opts' }, rows.map(r => r.b)),
+        valid: () => on.size > 0, get: () => multi ? [...on].sort((a, b) => a - b) : [...on][0],
+        lock: () => { locked = true; rows.forEach(r => { const c = el.options[r.i].correct; r.b.classList.toggle('right', !!c); r.b.classList.toggle('wrong', !c && on.has(r.i)); }); }
+      };
+    }
+    if (el.sub === 'text' || el.sub === 'number') {
+      const inp = h('input', { type: 'text', id: 'q-in', class: 'big', placeholder: el.sub === 'number' ? 'Zahl eingeben' : 'Antwort eingeben', inputMode: el.sub === 'number' ? 'decimal' : 'text', autocomplete: 'off' });
+      return { node: inp, valid: () => inp.value.trim() !== '', get: () => inp.value, lock: () => { inp.readOnly = true; }, onEnter: fn => inp.addEventListener('keydown', e => { if (e.key === 'Enter') fn(); }) };
+    }
+    if (el.sub === 'sort') {
+      let ord = idx.map((_, i) => i).slice(0, (el.items || []).length);
+      for (let t = 0; t < 8 && ord.length > 1 && ord.every((v, i) => v === i); t++) ord = shuffle(ord);
+      const box = h('ol', { class: 'sort' });
+      const draw = () => box.replaceChildren(...ord.map((o, p) => h('li', {},
+        h('span', {}, el.items[o]),
+        h('span', { class: 'mv' },
+          h('button', { type: 'button', 'aria-label': 'nach oben', disabled: locked || p === 0, onclick: () => { [ord[p - 1], ord[p]] = [ord[p], ord[p - 1]]; draw(); } }, '↑'),
+          h('button', { type: 'button', 'aria-label': 'nach unten', disabled: locked || p === ord.length - 1, onclick: () => { [ord[p + 1], ord[p]] = [ord[p], ord[p + 1]]; draw(); } }, '↓')))));
+      draw();
+      return { node: box, valid: () => true, get: () => ord.slice(), lock: () => { locked = true; draw(); [...box.children].forEach((li, p) => li.classList.add(ord[p] === p ? 'right' : 'wrong')); } };
+    }
+    if (el.sub === 'match') {
+      const rights = shuffle((el.pairs || []).map((p, i) => i)), sels = [];
+      const node = h('div', { class: 'match' }, (el.pairs || []).map((p, i) => {
+        const s = h('select', { id: 'm-' + i, 'aria-label': p.l }, h('option', { value: '' }, '– wählen –'), rights.map(r => h('option', { value: r }, el.pairs[r].r)));
+        sels.push(s);
+        return h('label', { for: 'm-' + i }, h('span', {}, p.l), s);
+      }));
+      return { node, valid: () => sels.every(s => s.value !== ''), get: () => sels.map(s => Number(s.value)), lock: () => sels.forEach((s, i) => { s.disabled = true; s.parentNode.classList.add(Number(s.value) === i ? 'right' : 'wrong'); }) };
+    }
+    return { node: h('p', {}, '?'), valid: () => false, get: () => null, lock() { } };
+  }
+  r_quiz(el, card) {
+    const max = Number(el.points) || 0, attempts = Math.max(1, Number(el.attempts) || 1);
+    let wrong = 0, hints = 0, done = false, timerId = null;
+    const inp = this.quizInput(el), fb = h('div'), hintBox = h('div'), msg = h('div', { class: 'pl-hintmsg', hidden: true });
+    const checkBtn = this.btn('Antwort prüfen', () => submit());
+    const row = h('div', { class: 'row' });
+    const hintBtn = el.hint ? this.btn('Hinweis' + (Number(el.hintCost) > 0 && max ? ' (−' + el.hintCost + ' Pkt.)' : ''), () => { hints = 1; hintBox.replaceChildren(this.fb('info', el.hint)); hintBtn.remove(); }, '') : null;
+    const finish = (ok, ans) => {
+      if (done) return; done = true; clearInterval(timerId); inp.lock();
+      const pts = ok ? Math.max(0, Math.round(max * (1 - wrong * (Number(el.penalty) || 0) / 100)) - hints * (Number(el.hintCost) || 0)) : 0;
+      let text = ok ? (el.feedbackRight || 'Richtig!') : (el.feedbackWrong || 'Leider falsch.');
+      if (!ok) text += '\n\n**Richtig wäre:** ' + solutionText(el);
+      if (el.explain) text += '\n\n' + el.explain;
+      fb.replaceChildren(this.fb(ok ? 'ok' : 'bad', text, pts)); hintBox.replaceChildren();
+      row.replaceChildren(this.btn('Weiter', () => this.next({ points: pts, max, correct: ok, answer: ans, next: ok ? el.nextRight : el.nextWrong })));
+    };
+    const submit = () => {
+      if (done) return;
+      if (!inp.valid()) { fb.replaceChildren(this.fb('info', el.sub === 'match' ? 'Bitte ordne alles zu.' : 'Bitte gib zuerst eine Antwort.')); return; }
+      const ans = inp.get(), ok = checkQuiz(el, ans);
+      if (ok) return finish(true, ans);
+      wrong++;
+      if (wrong >= attempts) return finish(false, ans);
+      fb.replaceChildren(this.fb('bad', (el.feedbackWrong || 'Leider falsch.') + '\n\nNoch ' + (attempts - wrong) + (attempts - wrong === 1 ? ' Versuch.' : ' Versuche.')));
+    };
+    if (inp.onEnter) inp.onEnter(submit);
+    row.append(...[hintBtn, checkBtn].filter(Boolean));
+    card.append(inp.node);
+    if (Number(el.timeLimit) > 0) {
+      const bar = h('div', { class: 'qtimer' }, h('i')), t0 = Date.now(), lim = Number(el.timeLimit) * 1000;
+      card.append(bar);
+      timerId = setInterval(() => {
+        const left = lim - (Date.now() - t0); bar.firstChild.style.width = Math.max(0, left / lim * 100) + '%';
+        if (left <= 0) finish(false, inp.valid() ? inp.get() : null);
+      }, 200);
+      this.stops.push(() => clearInterval(timerId));
+    }
+    card.append(hintBox, fb, row);
+  }
+
+  r_survey(el, card) {
+    let val = el.sub === 'multi' ? [] : null;
+    const row = h('div', { class: 'row' }), go = this.btn('Weiter', () => this.next({ answer: val, correct: null }));
+    const upd = () => { go.disabled = !!el.required && (el.sub === 'multi' ? !val.length : (val == null || val === '')); };
+    let node;
+    if (el.sub === 'text') {
+      node = h('textarea', { rows: 4, id: 's-text', placeholder: 'Deine Antwort', oninput: e => { val = e.target.value.trim(); upd(); } });
+    } else if (el.sub === 'rating') {
+      const bs = [1, 2, 3, 4, 5].map(n => h('button', { type: 'button', class: 'star', 'aria-label': n + ' von 5', onclick: () => { val = n; bs.forEach((b, i) => b.classList.toggle('on', i < n)); upd(); } }, '★'));
+      node = h('div', { class: 'stars' }, bs);
+    } else {
+      const multi = el.sub === 'multi';
+      const bs = (el.options || []).map((o, i) => {
+        const b = h('button', { type: 'button', class: 'opt ' + (multi ? 'chk' : 'rad'), 'aria-pressed': 'false' }, h('span', { class: 'mk' }), h('span', {}, o));
+        b.onclick = () => {
+          if (multi) { val = val.includes(o) ? val.filter(x => x !== o) : val.concat(o); } else val = o;
+          bs.forEach((x, j) => { const on = multi ? val.includes(el.options[j]) : val === el.options[j]; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
+          upd();
+        };
+        return b;
+      });
+      node = h('div', { class: 'opts' }, bs);
+    }
+    upd(); row.append(go); card.append(node, row);
+  }
+
+  r_mission(el, card) {
+    const max = Number(el.points) || 0; let data = null;
+    const prev = h('div', { class: 'mprev' }), row = h('div', { class: 'row' });
+    const go = this.btn('Abgeben', () => this.next({ points: max, max, correct: null, answer: data })); go.disabled = true;
+    const set = (v, node) => { data = v; prev.replaceChildren(node || ''); go.disabled = !data; };
+    if (el.kind === 'text') {
+      card.append(h('textarea', { rows: 5, id: 'm-text', placeholder: 'Deine Antwort', oninput: e => set(e.target.value.trim() || null) }));
+    } else {
+      const accept = { photo: 'image/*', video: 'video/*', audio: 'audio/*', file: '*/*' }[el.kind] || '*/*';
+      const inp = h('input', { type: 'file', accept, id: 'm-file', hidden: true });
+      if (el.kind === 'photo') inp.setAttribute('capture', 'environment'); if (el.kind === 'video') inp.setAttribute('capture', 'environment'); if (el.kind === 'audio') inp.setAttribute('capture', 'user');
+      inp.onchange = async () => {
+        const f = inp.files[0]; if (!f) return;
+        try {
+          if (el.kind === 'photo') { const u = await fileToDataURL(f, 1024); set(u, h('img', { src: u, alt: 'Dein Foto' })); }
+          else { const u = URL.createObjectURL(f); this.stops.push(() => URL.revokeObjectURL(u)); set('[' + f.name + ', ' + Math.round(f.size / 1024) + ' KB]', el.kind === 'video' ? h('video', { src: u, controls: true, playsinline: '' }) : el.kind === 'audio' ? h('audio', { src: u, controls: true }) : h('p', {}, f.name)); }
+        } catch (e) { set(null, h('p', { class: 'muted' }, 'Datei konnte nicht gelesen werden.')); }
+      };
+      const label = { photo: 'Foto aufnehmen oder wählen', video: 'Video aufnehmen oder wählen', audio: 'Audio aufnehmen oder wählen', file: 'Datei wählen' }[el.kind] || 'Datei wählen';
+      card.append(inp, h('div', { class: 'row' }, this.btn(label, () => inp.click(), '')));
+    }
+    if (el.optional) row.append(this.btn('Überspringen', () => this.next({ points: 0, max, correct: null, skipped: true }), ''));
+    row.append(go); card.append(prev, row);
+  }
+
+  r_code(el, card) {
+    const max = Number(el.points) || 0, codes = (el.codes || []).map(c => c.trim().toLowerCase()).filter(Boolean);
+    const inp = h('input', { type: 'text', id: 'c-in', class: 'big', placeholder: 'Code eingeben', autocomplete: 'off' });
+    const fb = h('div'), row = h('div', { class: 'row' }), scanBox = h('div', { class: 'scan', hidden: true });
+    let wrong = 0, done = false;
+    const verify = v => {
+      if (done) return; v = String(v).trim().toLowerCase();
+      if (codes.includes(v)) {
+        done = true; this.clearStops(); scanBox.hidden = true; inp.readOnly = true;
+        const pts = Math.max(0, max - wrong * Math.round(max / 4));
+        fb.replaceChildren(this.fb('ok', 'Code gefunden!', pts));
+        row.replaceChildren(this.btn('Weiter', () => this.next({ points: pts, max, correct: true, answer: v })));
+      } else { wrong++; fb.replaceChildren(this.fb('bad', 'Dieser Code passt nicht. Versuch es noch einmal.')); }
+    };
+    const hintBtn = el.hint ? this.btn('Hinweis', () => { fb.replaceChildren(this.fb('info', el.hint)); hintBtn.remove(); }, '') : null;
+    const hasDet = 'BarcodeDetector' in window;
+    const scanBtn = el.scan && hasDet ? this.btn('QR-Code scannen', () => this.scan(scanBox, verify), '') : null;
+    // Ausweichlösung ohne Live-Kamera: Foto aufnehmen und auswerten (funktioniert auch in eingebetteten Ansichten)
+    const photoIn = h('input', { type: 'file', accept: 'image/*', hidden: true, id: 'c-photo' }); photoIn.setAttribute('capture', 'environment');
+    photoIn.onchange = async () => {
+      const f = photoIn.files[0]; photoIn.value = ''; if (!f) return;
+      try { const r = await new BarcodeDetector({ formats: ['qr_code'] }).detect(await createImageBitmap(f)); if (r[0]) verify(r[0].rawValue); else fb.replaceChildren(this.fb('info', 'Im Foto wurde kein QR-Code erkannt. Geh näher ran oder tippe den Code ein.')); }
+      catch (e) { fb.replaceChildren(this.fb('info', 'Das Foto konnte nicht ausgewertet werden. Tippe den Code ein.')); }
+    };
+    const photoBtn = el.scan && hasDet ? this.btn('QR-Code fotografieren', () => photoIn.click(), '') : null;
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') verify(inp.value); });
+    row.append(...[scanBtn, photoBtn, hintBtn, el.allowSkip && this.btn('Überspringen', () => this.next({ points: 0, max, correct: false, skipped: true }), ''), this.btn('Code prüfen', () => verify(inp.value))].filter(Boolean));
+    card.append(inp, photoIn, scanBox, fb, row);
+    if (el.scan && !('BarcodeDetector' in window)) card.append(h('p', { class: 'muted small' }, 'Dieser Browser kann keine QR-Codes lesen (Chrome auf Android kann es). Tippe den Code ein.'));
+  }
+  async scan(box, onCode) {
+    box.hidden = false; box.replaceChildren(h('p', { class: 'muted' }, 'Kamera wird gestartet …'));
+    try {
+      const det = new BarcodeDetector({ formats: ['qr_code'] });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      const v = h('video', { playsinline: '', muted: true }); v.srcObject = stream; await v.play();
+      box.replaceChildren(v, this.btn('Kamera schließen', () => { this.clearStops(); box.hidden = true; }, 'sm'));
+      let alive = true; this.stops.push(() => { alive = false; stream.getTracks().forEach(t => t.stop()); });
+      const loop = async () => {
+        if (!alive) return;
+        try { const r = await det.detect(v); if (r[0]) { onCode(r[0].rawValue); if (!alive) return; } } catch (e) { }
+        setTimeout(loop, 250);
+      };
+      loop();
+    } catch (e) { box.replaceChildren(h('p', { class: 'muted' }, 'Das Live-Kamerabild ist hier nicht verfügbar (in eingebetteten Ansichten gesperrt). Nutze „QR-Code fotografieren“ oder tippe den Code ein.')); }
+  }
+
+  r_location(el, card) {
+    const tlat = Number(el.lat), tlon = Number(el.lon), rad = Math.max(5, Number(el.radius) || 25), max = Number(el.points) || 0;
+    const status = h('div', { class: 'loc-status', role: 'status' }, 'Standort wird ermittelt …');
+    const arrow = h('div', { class: 'compass', html: '<svg viewBox="-50 -50 100 100" aria-hidden="true"><circle r="46" class="ring"/><text y="-33" text-anchor="middle" class="n">N</text><g class="arw"><path d="M0 -26 L14 14 L0 6 L-14 14 Z"/></g></svg>' });
+    const arw = arrow.querySelector('.arw'), row = h('div', { class: 'row' }), fb = h('div');
+    let map = null, heading = null, last = null, done = false, bestD = null;
+    if (el.showMap !== false) { const box = h('div', { class: 'pl-map' }); card.append(box); setTimeout(() => { map = new SlippyMap(box, { lat: tlat, lon: tlon, zoom: 17 }); map.setTarget(tlat, tlon, rad); if (last) { map.setUser(last[0], last[1], last[2]); map.fit(); } this.stops.push(() => map && map.destroy()); }, 0); }
+    card.append(arrow, status, fb, row);
+    const reach = () => {
+      if (done) return; done = true; this.clearStops();
+      status.textContent = ''; arrow.hidden = true;
+      fb.replaceChildren(this.fb('ok', 'Du bist am Ziel!', max));
+      row.replaceChildren(this.btn('Weiter', () => this.next({ points: max, max, correct: true, answer: last ? { lat: last[0], lon: last[1] } : null })));
+    };
+    const update = (lat, lon, acc) => {
+      if (done) return; last = [lat, lon, acc];
+      const d = haversine(lat, lon, tlat, tlon), b = bearing(lat, lon, tlat, tlon);
+      arw.setAttribute('transform', 'rotate(' + Math.round(b - (heading || 0)) + ')');
+      if (!done) status.textContent = (el.showDistance !== false ? 'Noch ' + fmtDist(d) + '. ' : '') + (acc ? 'Genauigkeit ±' + Math.round(acc) + ' m.' : '') + (heading == null ? ' Pfeil zeigt nach Norden.' : '');
+      if (map) { map.setUser(lat, lon, acc); if (bestD == null) map.fit(); } bestD = d;
+      if (d <= rad) reach();
+    };
+    if (navigator.geolocation) {
+      const id = navigator.geolocation.watchPosition(p => update(p.coords.latitude, p.coords.longitude, p.coords.accuracy), err => { if (!done) status.textContent = 'Kein Standortzugriff (' + (err.message || 'abgelehnt') + '). Erlaube den Zugriff im Browser.'; }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 });
+      this.stops.push(() => navigator.geolocation.clearWatch(id));
+    } else status.textContent = 'Dieser Browser bietet keinen Standortzugriff.';
+    const onOri = e => { const hd = e.webkitCompassHeading != null ? e.webkitCompassHeading : (e.absolute && e.alpha != null ? 360 - e.alpha : null); if (hd != null) { heading = hd; if (last && !done) update(last[0], last[1], last[2]); } };
+    const needPerm = typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
+    const attach = () => { window.addEventListener('deviceorientationabsolute', onOri, true); window.addEventListener('deviceorientation', onOri, true); this.stops.push(() => { window.removeEventListener('deviceorientationabsolute', onOri, true); window.removeEventListener('deviceorientation', onOri, true); }); };
+    if (needPerm) row.append(this.btn('Kompass aktivieren', async () => { try { if (await DeviceOrientationEvent.requestPermission() === 'granted') attach(); } catch (e) { } }, ''));
+    else attach();
+    if (el.allowSkip) row.append(this.btn('Ich bin da (ohne GPS)', () => { this.clearStops(); this.next({ points: 0, max, correct: false, skipped: true }); }, ''));
+    if (this.o.preview) row.append(this.btn('Test: 40 m entfernt', () => { const p = offsetPoint(tlat, tlon, rad + 40, 200); update(p[0], p[1], 8); }, 'sm'), this.btn('Test: am Ziel', () => update(tlat, tlon, 5), 'sm'));
+  }
+
+  r_timer(el, card) {
+    const total = Math.max(0, Number(el.seconds) || 0); let left = total;
+    const big = h('div', { class: 'bigtime', role: 'timer' }, fmtTime(left * 1000)), go = this.btn('Weiter', () => this.next({})); go.disabled = !el.skippable && left > 0;
+    const id = setInterval(() => { left--; big.textContent = fmtTime(Math.max(0, left) * 1000); if (left <= 0) { clearInterval(id); go.disabled = false; } }, 1000);
+    this.stops.push(() => clearInterval(id));
+    card.append(big, h('div', { class: 'row' }, go));
+  }
+  r_choice(el, card) {
+    card.append(h('div', { class: 'opts' }, (el.options || []).map(o => h('button', { type: 'button', class: 'opt go', onclick: () => { applyActions(o.actions, this.g.vars); this.next({ answer: o.label, next: o.next }); } }, h('span', {}, o.label)))));
+  }
+
+  /* ---------- Ergebnis ---------- */
+  showResult() {
+    this.clearStops(); clearInterval(this.tick); this.updateHeader(); this.updateDebug();
+    const g = this.g, m = this.bound.meta, r = g.results();
+    this.bar.hidden = true; this.prog.hidden = true;
+    const reason = g.finishReason;
+    const fill = s => String(s || '').replace(/\{name\}/g, g.name || 'Spieler').replace(/\{score\}/g, g.vars.score).replace(/\{max\}/g, g.maxPts).replace(/\{team\}/g, g.team);
+    let board = null;
+    if (!this.o.preview) {
+      let list = []; try { list = JSON.parse(store.get(this.hsKey) || '[]'); } catch (e) { }
+      if (!this.saved) { this.saved = true; list.push({ name: g.name || 'Spieler', team: g.team, score: g.vars.score, sec: r.durationSec, at: r.finishedAt }); list.sort((a, b) => b.score - a.score || a.sec - b.sec); list = list.slice(0, 10); store.set(this.hsKey, JSON.stringify(list)); }
+      if (m.leaderboard !== false && list.length) board = h('details', { class: 'pl-board' }, h('summary', {}, 'Bestenliste (nur auf diesem Gerät)'), h('ol', {}, list.map(x => h('li', {}, h('span', {}, (x.name || 'Spieler') + (x.team ? ' · ' + x.team : '')), h('b', {}, x.score + ' Pkt.'), h('i', {}, fmtTime(x.sec * 1000))))));
+    }
+    const cert = h('div', { class: 'cert', hidden: true },
+      h('div', { class: 'cert-in' }, h('small', {}, 'URKUNDE'), h('h2', {}, g.name || 'Spieler'), h('p', {}, 'hat den Bound ' + (m.title || '') + ' abgeschlossen'), h('p', { class: 'cert-score' }, g.vars.score + ' Punkte'), h('p', { class: 'muted' }, new Date(r.finishedAt).toLocaleDateString('de-AT') + ' · ' + fmtTime(g.duration)),
+        h('button', { class: 'btn no-print', type: 'button', onclick: () => { document.body.classList.add('print-cert'); try { window.print(); } catch (e) { toast('Drucken ist in dieser Ansicht nicht möglich.'); } setTimeout(() => document.body.classList.remove('print-cert'), 800); } }, 'Drucken')));
+    this.body.replaceChildren(h('article', { class: 'pl-card pl-result' },
+      h('div', { class: 'pl-kind' }, reason === 'time' ? 'Zeit abgelaufen' : reason === 'abort' ? 'Vorzeitig beendet' : 'Geschafft'),
+      h('h2', {}, g.name ? 'Gut gemacht, ' + g.name + '!' : 'Gut gemacht!'),
+      m.showScore !== false && h('div', { class: 'bigscore' }, h('b', {}, g.vars.score), h('span', {}, ' von ' + g.maxPts + ' möglichen Punkten')),
+      h('div', { class: 'chips' }, h('span', { class: 'chip' }, 'Zeit ' + fmtTime(g.duration)), h('span', { class: 'chip' }, g.vars.correct + ' richtig'), h('span', { class: 'chip' }, g.vars.wrong + ' falsch')),
+      h('div', { class: 'pl-md', html: md(fill(m.finalText)) }), g.endText && h('div', { class: 'pl-md', html: md(fill(g.endText)) }),
+      h('table', { class: 'res' }, h('tbody', {}, g.log.map(l => h('tr', {}, h('td', { class: 'mk-' + (l.correct === true ? 'ok' : l.correct === false ? 'bad' : 'n') }, l.correct === true ? '✓' : l.correct === false ? '✗' : '•'), h('td', {}, l.title), h('td', { class: 'num' }, l.max ? l.points + '/' + l.max : ''))))),
+      board, cert,
+      h('div', { class: 'row' },
+        this.btn('Urkunde', () => { cert.hidden = !cert.hidden; }, ''),
+        this.btn('Ergebnis speichern', () => saveFile(slug(m.title) + '-ergebnis.json', JSON.stringify(r, null, 2), 'application/json'), ''),
+        this.btn('Nochmal spielen', () => { store.del(this.key); this.g.reset(); this.saved = false; this.showStart(); }))));
+    this.body.scrollTop = 0;
+  }
+}
+
+/* ============================================================
+   Editor: Elementliste, Formulare, Vorschau, JSON-Quelle, QR-Druck, Export
+   ============================================================ */
+const App = { bound: null, sel: 'meta', tab: 'edit', hist: [], hi: -1, player: null, previewFrom: 'sel', geoMap: null, geoUpdate: null, panel: 'edit' };
+let fidN = 0; const nid = () => 'f' + (++fidN);
+const ap = {};   // DOM-Referenzen
+
+/* ---------- Auswahlhilfen ---------- */
+const targetOptions = () => [['', '→ nächstes Element'], ...App.bound.elements.map((e, i) => [e.id, (i + 1) + '. ' + (e.title || TYPE_DEFS[e.type].label)]), ['__end', '■ Bound beenden']];
+const OPT_OPS = OPS.map(o => [o, o]);
+const OPT_ACT = [['set', 'setzen auf'], ['add', 'erhöhen um'], ['sub', 'verringern um']];
+
+/* ---------- Formularschema ---------- */
+const F = (k, key, label, x) => Object.assign({ k, key, label }, x);
+const COND_F = [F('var', 'var', 'Variable'), F('sel', 'op', 'Vergleich', { opts: OPT_OPS }), F('text', 'value', 'Wert')];
+const ACT_F = [F('var', 'var', 'Variable'), F('sel', 'op', 'Aktion', { opts: OPT_ACT }), F('text', 'value', 'Wert')];
+const logicBlock = (type, extra) => ({
+  k: 'details', label: 'Logik & Ablauf', fields: [
+    ...(extra || []),
+    F('list', 'cond', 'Nur anzeigen, wenn …', { item: COND_F, make: () => ({ var: 'score', op: '>=', value: 0 }), addLabel: '+ Bedingung', hint: 'Alle Bedingungen müssen zutreffen, sonst wird das Element übersprungen.' }),
+    F('list', 'actions', 'Danach Variablen ändern', { item: ACT_F, make: () => ({ var: 'score', op: 'add', value: 5 }), addLabel: '+ Aktion', hint: 'Eingebaute Variablen: score, correct, wrong. Eigene legst du unter Bound-Einstellungen an.' }),
+    ...(type === 'end' || type === 'choice' ? [] : [F('target', 'next', type === 'jump' ? 'Sonst weiter mit' : 'Danach weiter mit')])
+  ]
+});
+const FORMS = {
+  info: [F('text', 'title', 'Titel'), F('area', 'text', 'Text', { rows: 6, hint: 'Markdown: **fett**, *kursiv*, - Liste, [Link](https://…), ![Bild](https://…)' }), F('media', 'image', 'Bild'), F('text', 'audio', 'Audio-Link', { ph: 'https://…/datei.mp3' }), F('text', 'video', 'Video-Link', { ph: 'YouTube-Link oder .mp4' }), F('text', 'buttonLabel', 'Beschriftung des Weiter-Knopfs'), logicBlock('info')],
+  quiz: [
+    F('text', 'title', 'Titel'),
+    F('sel', 'sub', 'Fragetyp', { redraw: true, opts: [['single', 'Einfachauswahl'], ['multi', 'Mehrfachauswahl'], ['text', 'Texteingabe'], ['number', 'Zahl'], ['sort', 'Sortieren'], ['match', 'Zuordnen']] }),
+    F('area', 'text', 'Frage', { rows: 3 }), F('media', 'image', 'Bild'),
+    F('list', 'options', 'Antworten', { if: o => o.sub === 'single' || o.sub === 'multi', item: [F('text', 'text', 'Antwort'), F('check', 'correct', 'richtig')], make: () => ({ text: '', correct: false }), addLabel: '+ Antwort' }),
+    F('lines', 'answers', 'Richtige Antworten (eine pro Zeile)', { if: o => o.sub === 'text' }), F('check', 'caseSensitive', 'Groß-/Kleinschreibung beachten', { if: o => o.sub === 'text' }),
+    F('num', 'value', 'Richtiger Wert', { if: o => o.sub === 'number', step: 'any' }), F('num', 'tolerance', 'Toleranz (±)', { if: o => o.sub === 'number', step: 'any' }),
+    F('lines', 'items', 'Richtige Reihenfolge (eine Zeile pro Eintrag)', { if: o => o.sub === 'sort' }),
+    F('list', 'pairs', 'Paare', { if: o => o.sub === 'match', item: [F('text', 'l', 'Links'), F('text', 'r', 'Rechts')], make: () => ({ l: '', r: '' }), addLabel: '+ Paar' }),
+    F('row', null, null, { fields: [F('num', 'points', 'Punkte', { min: 0 }), F('num', 'attempts', 'Versuche', { min: 1 }), F('num', 'penalty', 'Abzug je Fehler (%)', { min: 0 })] }),
+    F('check', 'shuffle', 'Antworten mischen', { if: o => ['single', 'multi', 'sort'].includes(o.sub) }),
+    F('num', 'timeLimit', 'Zeitlimit in Sekunden (0 = keines)', { min: 0 }),
+    F('row', null, null, { fields: [F('text', 'hint', 'Hinweis'), F('num', 'hintCost', 'Hinweis kostet', { min: 0 })] }),
+    F('text', 'feedbackRight', 'Rückmeldung bei richtig'), F('text', 'feedbackWrong', 'Rückmeldung bei falsch'), F('area', 'explain', 'Erklärung (nach der Antwort)', { rows: 2 }),
+    logicBlock('quiz', [F('target', 'nextRight', 'Bei richtiger Antwort weiter mit'), F('target', 'nextWrong', 'Bei falscher Antwort weiter mit')])],
+  mission: [F('text', 'title', 'Titel'), F('area', 'text', 'Anweisung', { rows: 4 }), F('sel', 'kind', 'Abgabe', { opts: [['photo', 'Foto'], ['video', 'Video'], ['audio', 'Audio'], ['text', 'Text'], ['file', 'Datei']] }), F('num', 'points', 'Punkte', { min: 0 }), F('check', 'optional', 'Darf übersprungen werden'), logicBlock('mission')],
+  code: [F('text', 'title', 'Titel'), F('area', 'text', 'Aufgabe', { rows: 3 }), F('lines', 'codes', 'Gültige Codes (einer pro Zeile)', { hint: 'Erzeuge QR-Codes zum Ausdrucken über „QR-Codes“ oben.' }), F('check', 'scan', 'Kamera-Scan anbieten'), F('num', 'points', 'Punkte', { min: 0 }), F('text', 'hint', 'Hinweis'), F('check', 'allowSkip', 'Überspringen erlauben (0 Punkte)'), logicBlock('code')],
+  location: [F('text', 'title', 'Titel'), F('area', 'text', 'Aufgabe', { rows: 3 }), F('geo', null, 'Ziel'), F('num', 'radius', 'Radius in Metern', { min: 5 }), F('num', 'points', 'Punkte', { min: 0 }), F('check', 'showDistance', 'Entfernung anzeigen'), F('check', 'showMap', 'Karte anzeigen'), F('check', 'allowSkip', 'Überspringen erlauben (0 Punkte)'), logicBlock('location')],
+  survey: [F('text', 'title', 'Titel'), F('area', 'text', 'Frage', { rows: 3 }), F('sel', 'sub', 'Antwortart', { redraw: true, opts: [['choice', 'Einzelauswahl'], ['multi', 'Mehrfachauswahl'], ['text', 'Freitext'], ['rating', 'Sterne (1–5)']] }), F('lines', 'options', 'Antworten (eine pro Zeile)', { if: o => o.sub === 'choice' || o.sub === 'multi' }), F('check', 'required', 'Antwort ist Pflicht'), logicBlock('survey')],
+  timer: [F('text', 'title', 'Titel'), F('area', 'text', 'Text', { rows: 3 }), F('num', 'seconds', 'Sekunden', { min: 0 }), F('check', 'skippable', 'Sofort weiter erlaubt'), logicBlock('timer')],
+  choice: [F('text', 'title', 'Titel'), F('area', 'text', 'Text', { rows: 3 }), F('media', 'image', 'Bild'), F('list', 'options', 'Wege', { item: [F('text', 'label', 'Beschriftung'), F('target', 'next', 'Weiter mit'), F('list', 'actions', 'Variablen ändern', { item: ACT_F, make: () => ({ var: 'score', op: 'add', value: 1 }), addLabel: '+ Aktion' })], make: () => ({ label: 'Neuer Weg', next: '', actions: [] }), addLabel: '+ Weg' }), logicBlock('choice')],
+  jump: [F('text', 'title', 'Name (nur im Editor sichtbar)'), F('note', null, null, { text: 'Die erste Regel, die zutrifft, bestimmt das nächste Element. Trifft keine zu, geht es mit „Sonst weiter mit“ weiter.' }), F('list', 'rules', 'Regeln', { item: [F('var', 'var', 'Variable'), F('sel', 'op', 'Vergleich', { opts: OPT_OPS }), F('text', 'value', 'Wert'), F('target', 'target', 'Dann weiter mit')], make: () => ({ var: 'score', op: '>=', value: 10, target: '' }), addLabel: '+ Regel' }), logicBlock('jump')],
+  action: [F('text', 'title', 'Name (nur im Editor sichtbar)'), F('note', null, null, { text: 'Dieses Element läuft unsichtbar ab. Es ändert Variablen oder vergibt Bonuspunkte und springt weiter.' }), F('list', 'actions', 'Aktionen', { item: ACT_F, make: () => ({ var: 'score', op: 'add', value: 10 }), addLabel: '+ Aktion' }), { k: 'details', label: 'Ablauf', fields: [F('list', 'cond', 'Nur ausführen, wenn …', { item: COND_F, make: () => ({ var: 'score', op: '>=', value: 0 }), addLabel: '+ Bedingung' }), F('target', 'next', 'Danach weiter mit')] }],
+  end: [F('text', 'title', 'Titel'), F('area', 'text', 'Abschlusstext', { rows: 4 }), { k: 'details', label: 'Bedingung', fields: [F('list', 'cond', 'Nur anzeigen, wenn …', { item: COND_F, make: () => ({ var: 'score', op: '>=', value: 0 }), addLabel: '+ Bedingung' })] }]
+};
+const META_FORM = [
+  F('text', 'title', 'Titel des Bounds'), F('area', 'description', 'Beschreibung (Startseite)', { rows: 4 }), F('text', 'author', 'Autor oder Gruppe'), F('media', 'cover', 'Titelbild'),
+  F('check', 'askName', 'Spieler nach dem Namen fragen'), F('check', 'askTeam', 'Teamnamen abfragen'),
+  F('row', null, null, { fields: [F('num', 'timeLimit', 'Zeitlimit (Minuten, 0 = keines)', { min: 0 }), F('text', 'lang', 'Sprachcode')] }),
+  F('check', 'showScore', 'Punkte während des Spiels anzeigen'), F('check', 'showTimer', 'Uhr anzeigen'), F('check', 'leaderboard', 'Bestenliste auf dem Gerät führen'),
+  F('area', 'finalText', 'Abschlusstext', { rows: 3, hint: 'Platzhalter: {name}, {team}, {score}, {max}' }),
+  F('list', 'variables', 'Eigene Variablen', { item: [F('text', 'name', 'Name'), F('text', 'initial', 'Startwert')], make: () => ({ name: 'schluessel', initial: 0 }), addLabel: '+ Variable', hint: 'Nutze Variablen für Verzweigungen, Bedingungen und Boni. Namen ohne Leerzeichen.' })
+];
+
+/* ---------- Feldbau ---------- */
+const wrap = (label, id, ctrl, hint) => h('div', { class: 'field' }, label && h('label', { class: 'lbl', for: id }, label), ctrl, hint && h('small', { class: 'hint' }, hint));
+function renderFields(fields, obj, ctx) { return fields.filter(f => !f.if || f.if(obj)).map(f => fieldNode(f, obj, ctx)); }
+function fieldNode(f, obj, ctx) {
+  const id = nid(), set = (v) => { obj[f.key] = v; ctx.change(!!f.redraw); };
+  switch (f.k) {
+    case 'text': return wrap(f.label, id, h('input', { type: 'text', id, value: obj[f.key] == null ? '' : obj[f.key], placeholder: f.ph || '', oninput: e => set(e.target.value) }), f.hint);
+    case 'var': return wrap(f.label, id, h('input', { type: 'text', id, list: 'varlist', value: obj[f.key] == null ? '' : obj[f.key], placeholder: 'score', oninput: e => set(e.target.value.trim()) }), f.hint);
+    case 'area': return wrap(f.label, id, h('textarea', { id, rows: f.rows || 3, value: obj[f.key] || '', oninput: e => set(e.target.value) }), f.hint);
+    case 'num': return wrap(f.label, id, h('input', { type: 'number', id, min: f.min, step: f.step || 1, value: obj[f.key] == null ? '' : obj[f.key], oninput: e => set(e.target.value === '' ? '' : Number(e.target.value)) }), f.hint);
+    case 'check': return h('label', { class: 'chk-row' }, h('input', { type: 'checkbox', id, checked: !!obj[f.key], onchange: e => set(e.target.checked) }), f.label);
+    case 'sel': return wrap(f.label, id, h('select', { id, onchange: e => set(e.target.value) }, f.opts.map(([v, l]) => h('option', { value: v, selected: String(obj[f.key]) === String(v) }, l))), f.hint);
+    case 'target': return wrap(f.label, id, h('select', { id, onchange: e => set(e.target.value) }, targetOptions().filter(([v]) => v !== obj.id).map(([v, l]) => h('option', { value: v, selected: (obj[f.key] || '') === v }, l))), f.hint);
+    case 'lines': {
+      const ta = h('textarea', { id, rows: 4, value: (obj[f.key] || []).join('\n'), oninput: e => { obj[f.key] = e.target.value.split('\n'); ctx.change(false); }, onchange: e => { obj[f.key] = e.target.value.split('\n').map(s => s.trim()).filter(Boolean); e.target.value = obj[f.key].join('\n'); ctx.change(false); } });
+      return wrap(f.label, id, ta, f.hint);
+    }
+    case 'note': return h('p', { class: 'note' }, f.text);
+    case 'row': return h('div', { class: 'frow' }, renderFields(f.fields, obj, ctx));
+    case 'details': return h('details', { class: 'logic', open: false }, h('summary', {}, f.label), renderFields(f.fields, obj, ctx));
+    case 'media': return mediaField(f, obj, ctx, id);
+    case 'geo': return geoField(f, obj, ctx);
+    case 'list': return listField(f, obj, ctx);
+  }
+  return h('span');
+}
+function listField(f, obj, ctx) {
+  const arr = obj[f.key] || (obj[f.key] = []), box = h('div', { class: 'items' });
+  const sub = { change: () => ctx.change(false) };
+  const draw = () => {
+    box.replaceChildren(...arr.map((it, i) => h('div', { class: 'item' },
+      h('div', { class: 'item-fields' }, renderFields(f.item, it, sub)),
+      h('div', { class: 'item-tools' },
+        h('button', { type: 'button', title: 'nach oben', 'aria-label': 'nach oben', disabled: i === 0, onclick: () => { [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]]; draw(); ctx.change(false); } }, '↑'),
+        h('button', { type: 'button', title: 'nach unten', 'aria-label': 'nach unten', disabled: i === arr.length - 1, onclick: () => { [arr[i + 1], arr[i]] = [arr[i], arr[i + 1]]; draw(); ctx.change(false); } }, '↓'),
+        h('button', { type: 'button', title: 'entfernen', 'aria-label': 'entfernen', class: 'del', onclick: () => { arr.splice(i, 1); draw(); ctx.change(false); } }, '✕')))));
+    if (!arr.length) box.append(h('p', { class: 'empty' }, 'Noch nichts angelegt.'));
+  };
+  draw();
+  return h('div', { class: 'field list' }, h('div', { class: 'lbl' }, f.label), box,
+    h('button', { class: 'btn sm', type: 'button', onclick: () => { arr.push(f.make()); draw(); ctx.change(false); } }, f.addLabel || '+ Hinzufügen'), f.hint && h('small', { class: 'hint' }, f.hint));
+}
+function mediaField(f, obj, ctx, id) {
+  const v = obj[f.key] || '', emb = v.startsWith('data:');
+  const file = h('input', { type: 'file', accept: 'image/*', hidden: true, onchange: async e => { const fl = e.target.files[0]; if (!fl) return; try { obj[f.key] = await fileToDataURL(fl, 1280); ctx.change(true); } catch (x) { toast('Das Bild konnte nicht gelesen werden.'); } } });
+  return wrap(f.label, id, h('div', { class: 'media' },
+    v && /^(data:image|https?:)/.test(v) && h('img', { src: v, alt: '' }),
+    h('input', { type: 'text', id, value: emb ? '' : v, placeholder: emb ? 'Eingebettetes Bild (' + Math.round(v.length * 0.75 / 1024) + ' KB)' : 'https://… oder Bild wählen', oninput: e => { obj[f.key] = e.target.value.trim(); ctx.change(false); } }),
+    h('div', { class: 'row' }, file, h('button', { class: 'btn sm', type: 'button', onclick: () => file.click() }, 'Bild wählen'), v && h('button', { class: 'btn sm', type: 'button', onclick: () => { obj[f.key] = ''; ctx.change(true); } }, 'Entfernen'))),
+    'Gewählte Bilder werden verkleinert und direkt in der JSON-Datei gespeichert.');
+}
+function geoField(f, obj, ctx) {
+  const lat = h('input', { type: 'number', id: nid(), step: 'any', value: obj.lat, 'aria-label': 'Breitengrad' }), lon = h('input', { type: 'number', id: nid(), step: 'any', value: obj.lon, 'aria-label': 'Längengrad' });
+  const mapEl = h('div', { class: 'geo-map' }), q = h('input', { type: 'text', id: nid(), placeholder: 'Ort oder Adresse suchen', 'aria-label': 'Ort suchen' });
+  let map = null;
+  const sync = (center) => { if (!map) return; map.setTarget(Number(obj.lat), Number(obj.lon), Number(obj.radius) || 25); if (center) map.setView(Number(obj.lat), Number(obj.lon)); };
+  const setPos = (la, lo, center) => { obj.lat = +Number(la).toFixed(6); obj.lon = +Number(lo).toFixed(6); lat.value = obj.lat; lon.value = obj.lon; sync(center); ctx.change(false); };
+  lat.oninput = () => { obj.lat = lat.value === '' ? '' : Number(lat.value); sync(true); ctx.change(false); };
+  lon.oninput = () => { obj.lon = lon.value === '' ? '' : Number(lon.value); sync(true); ctx.change(false); };
+  setTimeout(() => { map = new SlippyMap(mapEl, { lat: Number(obj.lat) || 48.2, lon: Number(obj.lon) || 16.37, zoom: 16, onPick: (la, lo) => setPos(la, lo, false) }); App.geoMap = map; sync(false); }, 0);
+  App.geoUpdate = () => sync(false);
+  const search = async () => {
+    if (!q.value.trim()) return;
+    try {
+      const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q.value.trim()), { headers: { 'Accept': 'application/json' } });
+      const j = await r.json(); if (!j.length) { toast('Nichts gefunden.'); return; }
+      setPos(j[0].lat, j[0].lon, true);
+    } catch (e) { toast('Ortssuche hier nicht verfügbar. Klicke in die Karte oder gib Koordinaten ein.'); }
+  };
+  q.addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+  return h('div', { class: 'field geo' }, h('div', { class: 'lbl' }, f.label),
+    h('div', { class: 'frow' }, h('label', { class: 'sublbl' }, 'Breite', lat), h('label', { class: 'sublbl' }, 'Länge', lon)),
+    h('div', { class: 'row' }, q, h('button', { class: 'btn sm', type: 'button', onclick: search }, 'Suchen'),
+      h('button', { class: 'btn sm', type: 'button', onclick: () => { if (!navigator.geolocation) return toast('Kein Standortzugriff in diesem Browser.'); navigator.geolocation.getCurrentPosition(p => setPos(p.coords.latitude, p.coords.longitude, true), () => toast('Standort nicht verfügbar. Klicke in die Karte.')); } }, 'Mein Standort')),
+    mapEl, h('small', { class: 'hint' }, 'In die Karte klicken setzt das Ziel. Kacheln von OpenStreetMap laden nur, wenn die Seite Zugriff auf tile.openstreetmap.org hat.'));
+}
+
+/* ---------- Änderungen, Verlauf, Autosave ---------- */
+let tHist, tPrev, tSave;
+function commit(redraw, structural) {
+  clearTimeout(tHist); tHist = setTimeout(pushHist, 450);
+  clearTimeout(tSave); tSave = setTimeout(() => store.set('bw:draft', JSON.stringify(App.bound)), 400);
+  clearTimeout(tPrev); tPrev = setTimeout(refreshPreview, 450);
+  updateVarList(); renderTitle();
+  if (structural) renderList(); else patchListItem();
+  if (redraw) renderForm();
+  renderProblems();
+  if (App.geoUpdate) App.geoUpdate();
+}
+function pushHist() {
+  const s = JSON.stringify(App.bound);
+  if (App.hist[App.hi] === s) return;
+  App.hist = App.hist.slice(0, App.hi + 1); App.hist.push(s); if (App.hist.length > 120) App.hist.shift(); App.hi = App.hist.length - 1; updateHistBtns();
+}
+function loadHist(i) {
+  if (i < 0 || i >= App.hist.length) return; App.hi = i; App.bound = JSON.parse(App.hist[i]);
+  if (App.sel !== 'meta' && !App.bound.elements.some(e => e.id === App.sel)) App.sel = 'meta';
+  renderAll(); updateHistBtns(); store.set('bw:draft', JSON.stringify(App.bound));
+}
+function updateHistBtns() { ap.undo.disabled = App.hi <= 0; ap.redo.disabled = App.hi >= App.hist.length - 1; }
+function setBound(b, selId, fresh) {
+  if (!fresh) pushHist();            // aktuellen Stand sichern, damit Import/Beispiel/Neu rückgängig gemacht werden können
+  App.bound = b; App.sel = selId || 'meta'; if (fresh) { App.hist = []; App.hi = -1; } pushHist(); renderAll();
+  store.set('bw:draft', JSON.stringify(App.bound));
+}
+const curEl = () => App.bound.elements.find(e => e.id === App.sel);
+function updateVarList() { ap.varlist.replaceChildren(...varNames(App.bound).map(v => h('option', { value: v }))); }
+
+/* ---------- Rendering ---------- */
+function renderAll() { renderTitle(); renderList(); renderForm(); renderProblems(); updateVarList(); refreshPreview(); applyPanel(); }
+function renderTitle() { ap.title.value = App.bound.meta.title || ''; document.title = (App.bound.meta.title || 'Bound') + ' – Bound Werkstatt'; }
+function problemMap() { const m = {}; findProblems(App.bound).forEach(p => { if (p.id) (m[p.id] = m[p.id] || []).push(p.msg); }); return m; }
+function listItem(el, i, pm) {
+  const li = h('li', { class: 'li' + (App.sel === el.id ? ' sel' : ''), draggable: true, 'data-id': el.id, tabindex: '0', role: 'button', 'aria-label': (i + 1) + '. ' + el.title },
+    h('span', { class: 'li-ico t-' + el.type, 'aria-hidden': 'true' }, TYPE_DEFS[el.type].icon),
+    h('span', { class: 'li-txt' }, h('b', {}, el.title || TYPE_DEFS[el.type].label), h('small', {}, TYPE_DEFS[el.type].label + (el.type === 'quiz' ? ' · ' + ({ single: 'Auswahl', multi: 'Mehrfach', text: 'Text', number: 'Zahl', sort: 'Sortieren', match: 'Zuordnen' }[el.sub] || '') : '') + (POINT_TYPES.has(el.type) ? ' · ' + (el.points || 0) + ' Pkt.' : ''))),
+    (el.cond || []).length > 0 && h('span', { class: 'li-flag', title: 'Hat Bedingungen' }, '?'),
+    pm[el.id] && h('span', { class: 'li-warn', title: pm[el.id].join('\n') }, '!'));
+  li.addEventListener('click', () => selectEl(el.id));
+  li.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectEl(el.id); } });
+  li.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', el.id); li.classList.add('drag'); });
+  li.addEventListener('dragend', () => li.classList.remove('drag'));
+  li.addEventListener('dragover', e => { e.preventDefault(); li.classList.add('over'); });
+  li.addEventListener('dragleave', () => li.classList.remove('over'));
+  li.addEventListener('drop', e => { e.preventDefault(); li.classList.remove('over'); moveTo(e.dataTransfer.getData('text/plain'), el.id); });
+  return li;
+}
+function renderList() {
+  const pm = problemMap();
+  ap.meta.classList.toggle('sel', App.sel === 'meta');
+  ap.list.replaceChildren(...App.bound.elements.map((el, i) => listItem(el, i, pm)));
+  ap.count.textContent = App.bound.elements.length;
+}
+function patchListItem() {
+  const el = curEl(); if (!el) return;
+  const old = ap.list.querySelector('[data-id="' + el.id + '"]'); if (!old) return;
+  old.replaceWith(listItem(el, App.bound.elements.indexOf(el), problemMap()));
+}
+function renderProblems() {
+  const ps = findProblems(App.bound);
+  ap.prob.hidden = !ps.length; ap.probN.textContent = ps.length;
+  ap.probList.replaceChildren(...ps.map(p => { const el = App.bound.elements.find(e => e.id === p.id); return h('li', {}, h('button', { type: 'button', class: 'linklike', onclick: () => p.id && selectEl(p.id) }, (el ? (App.bound.elements.indexOf(el) + 1) + '. ' + el.title + ': ' : '') + p.msg)); }));
+}
+function renderForm() {
+  const sc = ap.form.scrollTop;
+  if (App.geoMap) { App.geoMap.destroy(); App.geoMap = null; } App.geoUpdate = null;
+  const ctx = { change: redraw => commit(redraw, false) };
+  const box = ap.form; box.replaceChildren();
+  if (App.sel === 'meta') {
+    box.append(h('div', { class: 'fhead' }, h('h2', {}, 'Bound-Einstellungen')), ...renderFields(META_FORM, App.bound.meta, ctx));
+  } else {
+    const el = curEl(); if (!el) { App.sel = 'meta'; return renderForm(); }
+    const i = App.bound.elements.indexOf(el);
+    box.append(h('div', { class: 'fhead' },
+      h('div', {}, h('span', { class: 'kind t-' + el.type }, TYPE_DEFS[el.type].icon + ' ' + TYPE_DEFS[el.type].label), h('small', { class: 'muted' }, ' Element ' + (i + 1) + ' von ' + App.bound.elements.length)),
+      h('div', { class: 'row tight' },
+        h('button', { class: 'btn sm', type: 'button', disabled: i === 0, title: 'nach oben', onclick: () => moveBy(-1) }, '↑'),
+        h('button', { class: 'btn sm', type: 'button', disabled: i === App.bound.elements.length - 1, title: 'nach unten', onclick: () => moveBy(1) }, '↓'),
+        h('button', { class: 'btn sm', type: 'button', onclick: dupEl }, 'Duplizieren'),
+        h('button', { class: 'btn sm danger', type: 'button', onclick: delEl }, 'Löschen'))),
+      ...renderFields(FORMS[el.type], el, ctx));
+  }
+  box.scrollTop = sc;
+}
+function selectEl(id) {
+  App.sel = id; renderList(); renderForm(); refreshPreview(); App.panel = 'edit'; applyPanel();
+}
+
+/* ---------- Elementoperationen ---------- */
+function addEl(type) {
+  const el = makeElement(type), els = App.bound.elements, i = App.sel === 'meta' ? els.length - 1 : els.indexOf(curEl());
+  els.splice(i + 1, 0, el); App.sel = el.id; commit(false, true); renderForm(); refreshPreview();
+  const row = ap.list.querySelector('[data-id="' + el.id + '"]'); if (row) row.scrollIntoView({ block: 'nearest' });
+  App.panel = 'edit'; applyPanel(); pushHist();
+}
+function moveBy(d) {
+  const els = App.bound.elements, i = els.indexOf(curEl()), j = i + d; if (j < 0 || j >= els.length) return;
+  [els[i], els[j]] = [els[j], els[i]]; commit(false, true); renderForm(); pushHist();
+}
+function moveTo(fromId, toId) {
+  if (fromId === toId) return; const els = App.bound.elements, a = els.findIndex(e => e.id === fromId), b = els.findIndex(e => e.id === toId); if (a < 0 || b < 0) return;
+  const [m] = els.splice(a, 1); els.splice(b, 0, m); commit(false, true); renderForm(); pushHist();
+}
+function dupEl() {
+  const el = curEl(), c = clone(el); c.id = uid(); c.title = (el.title || '') + ' (Kopie)';
+  const els = App.bound.elements; els.splice(els.indexOf(el) + 1, 0, c); App.sel = c.id; commit(false, true); renderForm(); refreshPreview(); pushHist();
+}
+function delEl() {
+  const el = curEl(), els = App.bound.elements, i = els.indexOf(el);
+  els.splice(i, 1);
+  // Verweise auf das gelöschte Element bereinigen
+  const fix = o => { for (const k of ['next', 'nextRight', 'nextWrong', 'target']) if (o[k] === el.id) o[k] = ''; };
+  els.forEach(e => { fix(e); (e.options || []).forEach(o => typeof o === 'object' && fix(o)); (e.rules || []).forEach(fix); });
+  App.sel = els[Math.min(i, els.length - 1)] ? els[Math.min(i, els.length - 1)].id : 'meta';
+  commit(false, true); renderForm(); refreshPreview(); pushHist(); toast('Element gelöscht. Mit Strg+Z holst du es zurück.');
+}
+
+/* ---------- Vorschau ---------- */
+function refreshPreview() {
+  if (App.player) { App.player.destroy(); App.player = null; }
+  const startAt = App.previewFrom === 'sel' && App.sel !== 'meta' && curEl() ? App.sel : null;
+  ap.phoneIn.replaceChildren();
+  App.player = new Player(ap.phoneIn, App.bound, { preview: true, startAt });
+  document.title = (App.bound.meta.title || 'Bound') + ' – Bound Werkstatt';
+  ap.pvMode.textContent = App.previewFrom === 'sel' ? 'Ab Auswahl' : 'Von vorn';
+}
+
+const prettyJSON = () => JSON.stringify(App.bound, null, 2);
+
+/* ---------- Dateien ---------- */
+const fileName = () => slug(App.bound.meta.title);
+function importText(text, name) {
+  try {
+    const { bound, warnings } = normalizeBound(JSON.parse(text));
+    setBound(bound, 'meta'); toast('„' + (name || 'Datei') + '“ geladen' + (warnings.length ? ' (' + warnings.length + ' Hinweis(e))' : ''));
+  } catch (e) { toast('Keine gültige Bound-Datei: ' + e.message); }
+}
+async function exportPlayer() {
+  const src = window.__SRC || '', tag = '<script id="embedded-' + 'bound" type="application/json">', i = src.indexOf(tag), j = src.indexOf('</' + 'script>', i);
+  if (i < 0 || j < 0) return toast('Export nicht möglich: Quelltext nicht gefunden.');
+  const json = JSON.stringify(App.bound).replace(/</g, '\\u003c');
+  await saveFile(fileName() + '.html', src.slice(0, i + tag.length) + json + src.slice(j), 'text/html');
+}
+
+/* ---------- Modal, QR-Druck ---------- */
+function modal(title, body, buttons) {
+  const root = $('#modal-root'), close = () => { root.replaceChildren(); document.body.classList.remove('print-qr'); };
+  const dlg = h('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
+    h('div', { class: 'modal-head' }, h('h2', {}, title), h('button', { class: 'btn sm', type: 'button', onclick: close, 'aria-label': 'Schließen' }, '✕')), body,
+    h('div', { class: 'row end' }, ...(buttons || []).map(b => h('button', { class: 'btn ' + (b.cls || ''), type: 'button', onclick: () => { if (b.fn) b.fn(close); if (!b.keep) close(); } }, b.label))));
+  const back = h('div', { class: 'backdrop', onclick: e => { if (e.target === back) close(); } }, dlg);
+  root.replaceChildren(back); const f = dlg.querySelector('button'); if (f) f.focus();
+  return close;
+}
+function showQR() {
+  const items = [];
+  App.bound.elements.forEach(el => { if (el.type === 'code') (el.codes || []).filter(c => c.trim()).forEach(c => items.push({ title: el.title, code: c.trim() })); });
+  if (!items.length) return modal('QR-Codes', h('p', {}, 'Es gibt noch kein Element vom Typ „Code finden“. Lege eines an und trage einen Code ein.'), [{ label: 'OK' }]);
+  const cards = items.map(it => { let svg; try { svg = QR.svg(it.code, { margin: 2 }); } catch (e) { svg = '<p>Code zu lang</p>'; } return h('figure', { class: 'qr' }, h('div', { class: 'qr-svg', html: svg }), h('figcaption', {}, h('b', {}, it.title), h('code', {}, it.code), h('button', { class: 'btn sm no-print', type: 'button', onclick: () => saveFile('qr-' + slug(it.code) + '.svg', QR.svg(it.code, { margin: 4 }), 'image/svg+xml') }, 'SVG speichern'))); });
+  modal('QR-Codes für „Code finden“', h('div', { class: 'qr-grid print-area' }, cards), [{ label: 'Drucken', cls: 'primary', keep: true, fn: () => { document.body.classList.add('print-qr'); try { window.print(); } catch (e) { toast('Drucken ist hier nicht möglich. Speichere die SVG-Dateien.'); } setTimeout(() => document.body.classList.remove('print-qr'), 800); } }, { label: 'Schließen' }]);
+}
+function askConfirm(msg, yes) { modal('Bitte bestätigen', h('p', {}, msg), [{ label: 'Abbrechen' }, { label: 'Ja, fortfahren', cls: 'danger', fn: yes }]); }
+
+/* ---------- Hinzufügen-Menü ---------- */
+function buildAddMenu() {
+  const cats = {}; Object.entries(TYPE_DEFS).forEach(([k, d]) => (cats[d.cat] = cats[d.cat] || []).push([k, d]));
+  ap.addMenu.replaceChildren(...Object.entries(cats).map(([c, arr]) => h('div', { class: 'cat' }, h('div', { class: 'cat-t' }, c), arr.map(([k, d]) => h('button', { type: 'button', class: 'addit', onclick: () => { addEl(k); ap.addMenu.hidden = true; ap.addBtn.setAttribute('aria-expanded', 'false'); } }, h('span', { class: 'li-ico t-' + k, 'aria-hidden': 'true' }, d.icon), h('span', {}, h('b', {}, d.label), h('small', {}, d.desc)))))));
+}
+function applyPanel() { ap.app.dataset.panel = App.panel; ap.mtabs.querySelectorAll('button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.p === App.panel))); }
+
+/* ---------- Start ---------- */
+function initEditor(initial) {
+  Object.assign(ap, {
+    app: $('#app'), title: $('#bound-title'), meta: $('#meta-item'), list: $('#el-list'), count: $('#el-count'), form: $('#form'), phoneIn: $('#phone-in'), pvMode: $('#pv-mode'), prob: $('#prob'), probN: $('#prob-n'), probList: $('#prob-list'), varlist: $('#varlist'),
+    undo: $('#b-undo'), redo: $('#b-redo'), addBtn: $('#add-btn'), addMenu: $('#add-menu'), mtabs: $('#mtabs')
+  });
+  buildAddMenu();
+  ap.title.addEventListener('input', () => { App.bound.meta.title = ap.title.value; commit(App.sel === 'meta', false); });
+  ap.meta.addEventListener('click', () => { App.sel = 'meta'; renderList(); renderForm(); refreshPreview(); App.panel = 'edit'; applyPanel(); });
+  ap.addBtn.addEventListener('click', () => { const open = ap.addMenu.hidden; ap.addMenu.hidden = !open; ap.addBtn.setAttribute('aria-expanded', String(open)); });
+  document.addEventListener('click', e => { if (!e.target.closest('#add-wrap')) { ap.addMenu.hidden = true; ap.addBtn.setAttribute('aria-expanded', 'false'); } });
+  ap.undo.onclick = () => { pushHist(); loadHist(App.hi - 1); }; ap.redo.onclick = () => loadHist(App.hi + 1);
+  $('#b-new').onclick = () => askConfirm('Alles verwerfen und einen leeren Bound beginnen? Speichere vorher, falls du die Arbeit behalten willst.', () => { const b = blankBound(); b.elements.push(makeElement('info')); setBound(b, b.elements[0].id); });
+  $('#b-sample').onclick = () => askConfirm('Das Beispiel ersetzt deinen aktuellen Bound. Fortfahren?', () => setBound(normalizeBound(sampleBound()).bound, 'meta'));
+  const fileIn = $('#file-in'); $('#b-open').onclick = () => fileIn.click();
+  fileIn.onchange = async () => { const f = fileIn.files[0]; if (f) importText(await f.text(), f.name); fileIn.value = ''; };
+  $('#b-save').onclick = () => saveFile(fileName() + '.json', prettyJSON(), 'application/json');
+  $('#b-copy').onclick = () => copyText(prettyJSON());
+  $('#b-export').onclick = exportPlayer; $('#b-qr').onclick = showQR;
+  $('#pv-restart').onclick = refreshPreview; $('#pv-toggle').onclick = () => { App.previewFrom = App.previewFrom === 'sel' ? 'start' : 'sel'; refreshPreview(); };
+  ap.mtabs.querySelectorAll('button').forEach(b => b.onclick = () => { App.panel = b.dataset.p; applyPanel(); });
+  document.addEventListener('keydown', e => {
+    const t = e.target, typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT');
+    if ((e.ctrlKey || e.metaKey) && !typing) {
+      if (e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) ap.redo.click(); else ap.undo.click(); }
+      else if (e.key.toLowerCase() === 'y') { e.preventDefault(); ap.redo.click(); }
+      else if (e.key.toLowerCase() === 's') { e.preventDefault(); $('#b-save').click(); }
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && typing) { e.preventDefault(); $('#b-save').click(); }
+  });
+  window.addEventListener('dragover', e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) e.preventDefault(); });
+  window.addEventListener('drop', async e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) { e.preventDefault(); importText(await f.text(), f.name); } });
+  setBound(initial, 'meta', true); updateHistBtns();
+}
+
+/* ============================================================
+   Beispiel-Bound und Start
+   ============================================================ */
+function sampleBound() {
+  const b = blankBound();
+  b.meta.title = 'Rätselrallye Stadtpark';
+  b.meta.author = 'Beispiel-Gruppe';
+  b.meta.description = 'Eine kurze Rallye mit **Quiz, QR-Code, GPS, Verzweigung und Bonuspunkten**. Bearbeite sie links, spiele sie rechts.\n\n- ca. 20 Minuten\n- Bring ein Smartphone mit';
+  b.meta.timeLimit = 0;
+  b.meta.variables = [{ name: 'weg', initial: 0 }, { name: 'fotos', initial: 0 }];
+  const E = (type, id, o) => Object.assign(makeElement(type), { id }, o);
+  b.elements = [
+    E('info', 'start', { title: 'Willkommen', text: 'Schön, dass du dabei bist!\n\nDu sammelst unterwegs **Punkte**. Schnelle und richtige Antworten bringen die meisten.', buttonLabel: 'Los geht’s' }),
+    E('quiz', 'q-fluss', { title: 'Welcher Fluss fließt unter dem Park?', sub: 'single', text: 'Der Wiener Stadtpark liegt an einem kleinen Fluss. Wie heißt er?', options: [{ text: 'Donau', correct: false }, { text: 'Wienfluss', correct: true }, { text: 'Alte Donau', correct: false }], points: 10, attempts: 2, hint: 'Der Name steckt im Namen der Stadt.', hintCost: 3, explain: 'Der Wienfluss ist rund 34 km lang.' }),
+    E('quiz', 'q-text', { title: 'Wer steht in Gold?', sub: 'text', text: 'Im Park steht ein vergoldetes Denkmal eines berühmten Walzerkönigs. Wie ist sein Nachname?', answers: ['Strauss', 'Strauß'], points: 15, attempts: 3, penalty: 30 }),
+    E('code', 'c-park', { title: 'Station am Eingang', text: 'Such den QR-Code am Eingang. Scanne ihn oder tippe den Code darunter ein.', codes: ['PARK1'], scan: true, points: 10, hint: 'Er hängt am Tor, auf Augenhöhe.', allowSkip: true }),
+    E('location', 'l-denkmal', { title: 'Finde das Denkmal', text: 'Geh dem Pfeil nach. Wenn du nah genug bist, geht es automatisch weiter.', lat: 48.2045, lon: 16.3805, radius: 40, points: 15, allowSkip: true }),
+    E('choice', 'w-choice', { title: 'Welchen Weg nimmst du?', text: 'Zwei Aufgaben stehen zur Wahl.', options: [{ label: 'Der ruhige Weg (Natur)', next: 'w-a', actions: [{ var: 'weg', op: 'set', value: 1 }] }, { label: 'Der sportliche Weg (Bewegung)', next: 'w-b', actions: [{ var: 'weg', op: 'set', value: 2 }] }] }),
+    E('mission', 'w-a', { title: 'Der schönste Baum', text: 'Fotografiere einen Baum, der dir gefällt.', kind: 'photo', points: 10, next: 'q-sort', actions: [{ var: 'fotos', op: 'add', value: 1 }] }),
+    E('timer', 'w-b', { title: '20 Sekunden Bewegung', text: 'Mach 10 Kniebeugen. Der Timer läuft.', seconds: 20, skippable: false }),
+    E('quiz', 'q-sort', { title: 'Wasserkreislauf', sub: 'sort', text: 'Bring die Schritte in die richtige Reihenfolge.', items: ['Verdunstung', 'Wolkenbildung', 'Regen', 'Versickerung'], points: 15, attempts: 2 }),
+    E('quiz', 'q-match', { title: 'Hauptstädte', sub: 'match', text: 'Ordne jede Stadt dem Land zu.', pairs: [{ l: 'Wien', r: 'Österreich' }, { l: 'Bern', r: 'Schweiz' }, { l: 'Berlin', r: 'Deutschland' }], points: 15 }),
+    E('quiz', 'q-num', { title: 'Wie viele Beine hat eine Spinne?', sub: 'number', value: 8, tolerance: 0, points: 5, attempts: 1 }),
+    E('survey', 's-1', { title: 'Wie hat es dir gefallen?', sub: 'rating', text: 'Gib uns bis zu fünf Sterne.', required: false }),
+    E('jump', 'j-bonus', { title: 'Bonus ab 40 Punkten?', rules: [{ var: 'score', op: '>=', value: 40, target: 'a-bonus' }], next: 'fin' }),
+    E('action', 'a-bonus', { title: 'Bonus gutschreiben', actions: [{ var: 'score', op: 'add', value: 10 }] }),
+    E('info', 'i-bonus', { title: 'Bonus!', text: 'Du hattest mindestens 40 Punkte und bekommst **10 Extra-Punkte**.' }),
+    E('end', 'fin', { title: 'Ende', text: 'Danke für deine Teilnahme. Bis zum nächsten Mal!' })
+  ];
+  return b;
+}
+
+(function main() {
+  const emb = document.getElementById('embedded-' + 'bound');
+  let embedded = null;
+  try { const t = emb && emb.textContent.trim(); if (t && t !== 'null') embedded = JSON.parse(t); } catch (e) { }
+  const editMode = !embedded || location.hash === '#edit';
+  if (!editMode) {
+    $('#app').hidden = true; const root = $('#player-root'); root.hidden = false;
+    document.body.classList.add('player-only');
+    new Player(root, normalizeBound(embedded).bound, { preview: false });
+    return;
+  }
+  let initial = null;
+  if (embedded) initial = normalizeBound(embedded).bound;
+  else {
+    const raw = store.get('bw:draft');
+    if (raw) { try { initial = normalizeBound(JSON.parse(raw)).bound; } catch (e) { } }
+  }
+  if (!initial || !initial.elements.length) initial = normalizeBound(sampleBound()).bound;
+  initEditor(initial);
+})();
+
+</script>
+</body>
+</html>
